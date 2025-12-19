@@ -16,7 +16,7 @@ export const blogPosts: BlogPost[] = [
     title: '10 Perfect STAR Answers for Common Behavioral Questions',
     excerpt: 'Master the most frequently asked behavioral questions with proven STAR-structured responses.',
     readTime: '8 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 25, 2025',
     content: `
 # 10 Perfect STAR Answers for Common Behavioral Questions
@@ -168,7 +168,7 @@ Before diving into examples, let's break down the STAR framework:
 
 ## Ready to Practice?
 
-The best way to master STAR answers is through practice. EchoMind AI provides real-time feedback on your responses, helping you refine your delivery and structure.
+The best way to master STAR answers is through practice. Job Foxy AI provides real-time feedback on your responses, helping you refine your delivery and structure.
 
 **Start your free practice session today and transform your behavioral interview skills.**
     `
@@ -179,7 +179,7 @@ The best way to master STAR answers is through practice. EchoMind AI provides re
     title: 'How to Talk About Failures Without Sounding Negative',
     excerpt: 'Turn your biggest setbacks into compelling stories that demonstrate growth and resilience.',
     readTime: '6 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 22, 2025',
     content: `
 # How to Talk About Failures Without Sounding Negative
@@ -347,7 +347,7 @@ Your failure story, told well, demonstrates exactly the qualities they're lookin
 
 ## Ready to Practice Your Story?
 
-The best failure stories feel natural and authentic—and that comes from practice. EchoMind AI can help you refine your delivery, suggest improvements, and ensure your failure story hits all the right notes.
+The best failure stories feel natural and authentic—and that comes from practice. Job Foxy AI can help you refine your delivery, suggest improvements, and ensure your failure story hits all the right notes.
 
 **Start practicing today and turn your setbacks into your strongest interview moments.**
     `
@@ -358,7 +358,7 @@ The best failure stories feel natural and authentic—and that comes from practi
     title: 'Why AI Mock Interviews Are Better Than Traditional Practice',
     excerpt: 'Discover the science-backed benefits of AI-powered interview preparation and real-time feedback.',
     readTime: '7 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 18, 2025',
     content: `
 # Why AI Mock Interviews Are Better Than Traditional Practice
@@ -560,7 +560,7 @@ Those who adopt these tools now will have a significant advantage in competitive
 
 ## Ready to Experience the Difference?
 
-EchoMind AI combines the latest advances in natural language processing with proven interview coaching methodologies. Our users consistently report feeling more confident, better prepared, and more successful in their interviews.
+Job Foxy AI combines the latest advances in natural language processing with proven interview coaching methodologies. Our users consistently report feeling more confident, better prepared, and more successful in their interviews.
 
 **Start your free AI mock interview today and see why thousands of job seekers have made the switch.**
     `
@@ -571,7 +571,7 @@ EchoMind AI combines the latest advances in natural language processing with pro
     title: 'ATS Resume Optimization: Keywords That Actually Work',
     excerpt: 'Learn which keywords hiring managers and ATS systems are looking for in 2025.',
     readTime: '10 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 15, 2025',
     content: `
 # ATS Resume Optimization: Keywords That Actually Work
@@ -869,7 +869,7 @@ Before submitting, verify:
 
 ## Ready to Optimize?
 
-EchoMind's Resume Analysis tool uses the same parsing technology as leading ATS systems. Upload your resume and see exactly how it performs—plus get specific keyword recommendations for your target roles.
+Job Foxy's Resume Analysis tool uses the same parsing technology as leading ATS systems. Upload your resume and see exactly how it performs—plus get specific keyword recommendations for your target roles.
 
 **Analyze your resume now and get past the ATS barrier.**
     `
@@ -880,7 +880,7 @@ EchoMind's Resume Analysis tool uses the same parsing technology as leading ATS 
     title: 'Handling Interview Anxiety: 5 Techniques That Work',
     excerpt: 'Evidence-based strategies to calm your nerves and perform at your best under pressure.',
     readTime: '5 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 10, 2025',
     content: `
 # Handling Interview Anxiety: 5 Techniques That Work
@@ -1099,7 +1099,7 @@ Each mock interview makes the next one less scary. Each question answered builds
 
 ## Ready to Build Interview Confidence?
 
-EchoMind AI provides unlimited mock interview practice, so you can face the real thing with calm confidence. Our users report 40% lower anxiety levels after just one week of practice.
+Job Foxy AI provides unlimited mock interview practice, so you can face the real thing with calm confidence. Our users report 40% lower anxiety levels after just one week of practice.
 
 **Start practicing today and transform interview anxiety into interview excellence.**
     `
@@ -1110,7 +1110,7 @@ EchoMind AI provides unlimited mock interview practice, so you can face the real
     title: 'The Ultimate Guide to Salary Negotiation',
     excerpt: 'How to confidently negotiate your worth and secure the compensation you deserve.',
     readTime: '12 min read',
-    author: 'EchoMind Team',
+    author: 'Job Foxy Team',
     publishedAt: 'November 5, 2025',
     content: `
 # The Ultimate Guide to Salary Negotiation
@@ -1439,7 +1439,7 @@ Each negotiation builds on the previous one:
 
 ## Ready to Negotiate with Confidence?
 
-Salary negotiation is a skill, and like any skill, it improves with practice. EchoMind AI can help you prepare for compensation discussions with mock negotiation scenarios and feedback.
+Salary negotiation is a skill, and like any skill, it improves with practice. Job Foxy AI can help you prepare for compensation discussions with mock negotiation scenarios and feedback.
 
 **Your career earnings depend on it. Start preparing today.**
     `

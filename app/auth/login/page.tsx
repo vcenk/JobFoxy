@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { useAuthStore } from '@/store/authStore'
 import { AlertCircle, Loader2, AlertTriangle, ArrowRight, CheckCircle2, Star } from 'lucide-react'
 import { motion } from 'framer-motion'
-import JobFoxyLogo from '@/components/assets/JobFoxy_Logo.png'
+import JobFoxyLogo from '@/components/assets/JobFoxyDark.svg'
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),

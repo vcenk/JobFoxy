@@ -3,12 +3,26 @@
 import { useState, useEffect, useRef } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Mic, Square, ArrowRight, RotateCcw, CheckCircle2, Sparkles, Loader2 } from 'lucide-react'
+import {
+  Mic,
+  Square,
+  ArrowRight,
+  RotateCcw,
+  CheckCircle2,
+  Sparkles,
+  Loader2,
+  Volume2,
+  Pause,
+  Play,
+  X,
+  ChevronRight,
+} from 'lucide-react'
 import Link from 'next/link'
+import { AudioVisualizer } from '@/components/practice/AudioVisualizer'
 
 // --- Types ---
 
-type SessionMode = 'focus' | 'debrief' | 'summary'
+type SessionState = 'loading' | 'question' | 'ai-speaking' | 'thinking' | 'recording' | 'processing' | 'feedback' | 'complete'
 
 interface Question {
   id: string
@@ -30,22 +44,23 @@ interface Session {
   total_questions: number
 }
 
+interface STARScore {
+  has_situation: boolean
+  has_task: boolean
+  has_action: boolean
+  has_result: boolean
+}
+
 interface Feedback {
   transcript: string
-  duration: number
-  wordCount: number
-  scores: {
-    star: number
-    clarity: number
-    relevance: number
-    impact: number
-  }
-  feedback: string
-  highlights: Array<{
-    text: string
-    type: 'good' | 'bad'
-  }>
-  idealAnswer?: string
+  overall_score: number
+  clarity_score: number
+  relevance_score: number
+  impact_score: number
+  star: STARScore
+  strengths: string[]
+  improvements: string[]
+  ideal_answer?: string
 }
 
 // --- Main Component ---
@@ -55,25 +70,26 @@ export default function PracticeSessionPage() {
   const router = useRouter()
   const sessionId = params.id as string
 
-  const [mode, setMode] = useState<SessionMode>('focus')
+  const [state, setState] = useState<SessionState>('loading')
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0)
   const [isRecording, setIsRecording] = useState(false)
+  const [isPaused, setIsPaused] = useState(false)
   const [timer, setTimer] = useState(0)
-  const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   // Data state
   const [session, setSession] = useState<Session | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
-  const [loadingSession, setLoadingSession] = useState(true)
   const [currentFeedback, setCurrentFeedback] = useState<Feedback | null>(null)
 
-  // Audio recording state
+  // Audio state
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioStreamRef = useRef<MediaStream | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
 
-  // Load session and questions on mount
+  // Load session and questions
   useEffect(() => {
     const loadSession = async () => {
       try {
@@ -83,14 +99,15 @@ export default function PracticeSessionPage() {
         if (data.success && data.session && data.questions) {
           setSession(data.session)
           setQuestions(data.questions.sort((a: Question, b: Question) => a.sequence_number - b.sequence_number))
+          setState('question')
         } else {
           setError(data.error || 'Failed to load practice session')
+          setState('complete')
         }
       } catch (err) {
         console.error('Failed to load session:', err)
         setError('Failed to load practice session')
-      } finally {
-        setLoadingSession(false)
+        setState('complete')
       }
     }
 
@@ -98,12 +115,53 @@ export default function PracticeSessionPage() {
       loadSession()
     } else {
       setError('Invalid session ID')
-      setLoadingSession(false)
+      setState('complete')
     }
   }, [sessionId])
 
   const currentQuestion = questions[currentQuestionIndex]
   const isLastQuestion = currentQuestionIndex === questions.length - 1
+
+  // --- TTS: Read Question Aloud ---
+
+  const speakQuestion = async (text: string) => {
+    try {
+      setState('ai-speaking')
+      setError(null)
+
+      const response = await fetch('/api/audio/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate speech')
+      }
+
+      const audioBlob = await response.blob()
+      const audioUrl = URL.createObjectURL(audioBlob)
+
+      const audio = new Audio(audioUrl)
+      audioRef.current = audio
+
+      audio.onended = () => {
+        setState('thinking')
+        URL.revokeObjectURL(audioUrl)
+      }
+
+      audio.onerror = () => {
+        setError('Failed to play audio')
+        setState('thinking')
+      }
+
+      await audio.play()
+    } catch (err) {
+      console.error('TTS Error:', err)
+      setError('Failed to read question aloud')
+      setState('thinking')
+    }
+  }
 
   // --- Recording Handlers ---
 
@@ -111,9 +169,10 @@ export default function PracticeSessionPage() {
     try {
       setError(null)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      audioStreamRef.current = stream
 
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm;codecs=opus'
+        mimeType: 'audio/webm;codecs=opus',
       })
 
       mediaRecorderRef.current = mediaRecorder
@@ -127,11 +186,13 @@ export default function PracticeSessionPage() {
 
       mediaRecorder.start()
       setIsRecording(true)
+      setIsPaused(false)
+      setState('recording')
       setTimer(0)
 
       // Start timer
       timerRef.current = setInterval(() => {
-        setTimer(prev => prev + 1)
+        setTimer((prev) => prev + 1)
       }, 1000)
     } catch (err) {
       console.error('Failed to start recording:', err)
@@ -139,25 +200,68 @@ export default function PracticeSessionPage() {
     }
   }
 
-  const stopRecording = () => {
-    return new Promise<Blob>((resolve, reject) => {
+  const pauseRecording = () => {
+    const mediaRecorder = mediaRecorderRef.current
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.pause()
+      setIsPaused(true)
+      if (timerRef.current) {
+        clearInterval(timerRef.current)
+      }
+    }
+  }
+
+  const resumeRecording = () => {
+    const mediaRecorder = mediaRecorderRef.current
+    if (mediaRecorder && mediaRecorder.state === 'paused') {
+      mediaRecorder.resume()
+      setIsPaused(false)
+      timerRef.current = setInterval(() => {
+        setTimer((prev) => prev + 1)
+      }, 1000)
+    }
+  }
+
+  const restartRecording = async () => {
+    stopRecording(false)
+    audioChunksRef.current = []
+    setTimer(0)
+    await startRecording()
+  }
+
+  const stopRecording = (submit: boolean = true): Promise<Blob | null> => {
+    return new Promise((resolve) => {
       const mediaRecorder = mediaRecorderRef.current
 
       if (!mediaRecorder) {
-        reject(new Error('No media recorder found'))
+        resolve(null)
         return
       }
 
-      mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
-        resolve(audioBlob)
+      if (submit) {
+        mediaRecorder.onstop = () => {
+          const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+          resolve(audioBlob)
 
-        // Clean up
-        mediaRecorder.stream.getTracks().forEach(track => track.stop())
+          // Clean up
+          if (audioStreamRef.current) {
+            audioStreamRef.current.getTracks().forEach((track) => track.stop())
+          }
+        }
+      } else {
+        // Just stop without returning blob
+        resolve(null)
+        if (audioStreamRef.current) {
+          audioStreamRef.current.getTracks().forEach((track) => track.stop())
+        }
       }
 
-      mediaRecorder.stop()
+      if (mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop()
+      }
+
       setIsRecording(false)
+      setIsPaused(false)
 
       if (timerRef.current) {
         clearInterval(timerRef.current)
@@ -165,12 +269,16 @@ export default function PracticeSessionPage() {
     })
   }
 
-  const handleStopRecording = async () => {
+  const handleSubmitAnswer = async () => {
     try {
-      setIsProcessing(true)
+      setState('processing')
       setError(null)
 
-      const audioBlob = await stopRecording()
+      const audioBlob = await stopRecording(true)
+
+      if (!audioBlob) {
+        throw new Error('No audio recorded')
+      }
 
       // Upload audio to STT API
       const formData = new FormData()
@@ -205,396 +313,449 @@ export default function PracticeSessionPage() {
         throw new Error(scoreData.error || 'Failed to score answer')
       }
 
-      // Set feedback
-      setCurrentFeedback({
-        transcript: sttData.transcript,
-        duration: sttData.duration || timer,
-        wordCount: sttData.wordCount || 0,
-        scores: scoreData.score ? {
-          star: Math.round(((scoreData.score.star?.has_situation ? 25 : 0) +
-                            (scoreData.score.star?.has_task ? 25 : 0) +
-                            (scoreData.score.star?.has_action ? 25 : 0) +
-                            (scoreData.score.star?.has_result ? 25 : 0))),
-          clarity: scoreData.score.clarity_score || 0,
-          relevance: scoreData.score.relevance_score || 0,
-          impact: scoreData.score.impact_score || 0,
-        } : {
-          star: 0,
-          clarity: 0,
-          relevance: 0,
-          impact: 0,
-        },
-        feedback: scoreData.score?.feedback || 'No feedback available',
-        highlights: scoreData.score?.highlights || [],
-        idealAnswer: scoreData.score?.ideal_answer || undefined,
-      })
-
-      setMode('debrief')
+      // Set feedback and show it
+      setCurrentFeedback(scoreData.score)
+      setState('feedback')
     } catch (err: any) {
-      console.error('Failed to process recording:', err)
-      setError(err.message || 'Failed to process your answer. Please try again.')
+      console.error('Submit error:', err)
+      setError(err.message || 'Failed to submit answer')
+      setState('recording')
       setIsRecording(false)
-    } finally {
-      setIsProcessing(false)
     }
   }
 
-  const handleNext = () => {
+  const handleNextQuestion = () => {
     if (isLastQuestion) {
-      // Update session status to completed
-      fetch(`/api/practice/session/${sessionId}/complete`, {
-        method: 'POST',
-      }).catch(console.error)
-
-      setMode('summary')
+      // Complete session
+      completeSession()
     } else {
-      setCurrentQuestionIndex(prev => prev + 1)
-      setMode('focus')
-      setTimer(0)
+      setCurrentQuestionIndex((prev) => prev + 1)
       setCurrentFeedback(null)
+      setState('question')
     }
   }
 
-  const handleRetry = () => {
-    setMode('focus')
-    setTimer(0)
-    setCurrentFeedback(null)
-    setError(null)
+  const completeSession = async () => {
+    try {
+      await fetch(`/api/practice/session/${sessionId}/complete`, {
+        method: 'POST',
+      })
+      router.push(`/dashboard/practice/summary?session=${sessionId}`)
+    } catch (err) {
+      console.error('Failed to complete session:', err)
+      router.push('/dashboard/practice')
+    }
   }
 
-  // --- Renderers ---
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60)
+    const secs = seconds % 60
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
 
-  if (loadingSession) {
+  // --- Render States ---
+
+  if (state === 'loading') {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-          <p className="text-white/60">Loading practice session...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
       </div>
     )
   }
 
-  if (error && !session) {
+  if (error && state === 'complete') {
     return (
-      <div className="min-h-[80vh] flex items-center justify-center">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-6 max-w-md text-center">
-          <p className="text-red-300 mb-4">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen px-4">
+        <div className="text-center max-w-md">
+          <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-2">Session Error</h1>
+          <p className="text-white/60 mb-6">{error}</p>
           <Link
             href="/dashboard/practice"
-            className="inline-block px-6 py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-lg transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-all"
           >
-            Return to Practice Dashboard
+            Back to Practice
           </Link>
         </div>
       </div>
     )
   }
 
-  if (mode === 'summary') {
-    return (
-      <div className="min-h-[80vh] flex flex-col items-center justify-center text-center">
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 max-w-lg w-full"
-        >
-          <div className="w-20 h-20 bg-green-500/20 text-green-400 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle2 className="w-10 h-10" />
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-4">Session Complete!</h2>
-          <p className="text-white/60 mb-8">
-            Great job practicing! Your answers have been saved and analyzed. Check your dashboard for detailed analytics and progress tracking.
-          </p>
-          <div className="flex flex-col gap-3">
-            <Link
-              href="/dashboard/practice"
-              className="w-full py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors"
-            >
-              Return to Dashboard
-            </Link>
-            <Link
-              href="/dashboard/practice/new"
-              className="w-full py-3 bg-white/5 text-white rounded-xl font-medium hover:bg-white/10 transition-colors"
-            >
-              Start New Session
-            </Link>
-          </div>
-        </motion.div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-[80vh] relative max-w-6xl mx-auto">
-      {/* Progress Bar */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-white/10 rounded-full overflow-hidden">
-        <motion.div
-          className="h-full bg-purple-500"
-          initial={{ width: 0 }}
-          animate={{ width: `${((currentQuestionIndex + (mode === 'debrief' ? 1 : 0)) / questions.length) * 100}%` }}
-        />
-      </div>
-
-      <div className="pt-12">
-        {/* Error Banner */}
-        {error && (
-          <div className="mb-6 p-4 rounded-lg bg-red-500/10 border border-red-500/20 text-red-300">
-            {error}
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
+      {/* Header */}
+      <div className="glass-panel px-6 py-4 mb-4">
+        <div className="flex items-center justify-between max-w-5xl mx-auto">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push('/dashboard/practice')}
+              className="glass-panel px-3 py-2 hover:bg-white/10 transition-all rounded-xl"
+            >
+              <X className="w-5 h-5 text-white/80" />
+            </button>
+            <div>
+              <h1 className="text-xl font-bold text-white">Practice Session</h1>
+              <p className="text-sm text-white/60">
+                Question {currentQuestionIndex + 1} of {questions.length}
+              </p>
+            </div>
           </div>
-        )}
 
-        <AnimatePresence mode="wait">
-          {mode === 'focus' ? (
-            <FocusView
-              key="focus"
-              question={currentQuestion}
-              isRecording={isRecording}
-              timer={timer}
-              onStart={startRecording}
-              onStop={handleStopRecording}
-              isProcessing={isProcessing}
-            />
-          ) : (
-            <DebriefView
-              key="debrief"
-              question={currentQuestion}
-              feedback={currentFeedback}
-              onNext={handleNext}
-              onRetry={handleRetry}
-              isLast={isLastQuestion}
-            />
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  )
-}
-
-// --- Sub-Components ---
-
-function FocusView({
-  question,
-  isRecording,
-  timer,
-  onStart,
-  onStop,
-  isProcessing
-}: {
-  question: Question
-  isRecording: boolean
-  timer: number
-  onStart: () => void
-  onStop: () => void
-  isProcessing: boolean
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      className="flex flex-col items-center justify-center min-h-[60vh]"
-    >
-      <div className="text-center max-w-3xl mb-12">
-        <span className="inline-block px-3 py-1 rounded-full bg-white/10 text-white/60 text-sm font-medium mb-6">
-          {question?.category || 'Practice'} Question
-        </span>
-        <h2 className={`text-3xl md:text-4xl font-bold text-white transition-opacity duration-500 ${isRecording ? 'opacity-50' : 'opacity-100'}`}>
-          {question?.question_text || 'Loading question...'}
-        </h2>
-        {question?.tips && question.tips.length > 0 && !isRecording && (
-          <div className="mt-6 flex flex-wrap gap-2 justify-center">
-            {question.tips.map((tip, i) => (
-              <span key={i} className="px-3 py-1 rounded-full bg-blue-500/10 text-blue-300 text-sm border border-blue-500/20">
-                💡 {tip}
-              </span>
+          {/* Progress indicator */}
+          <div className="flex gap-2">
+            {questions.map((_, idx) => (
+              <div
+                key={idx}
+                className={`w-8 h-1.5 rounded-full transition-all ${
+                  idx < currentQuestionIndex
+                    ? 'bg-green-500'
+                    : idx === currentQuestionIndex
+                    ? 'bg-purple-500'
+                    : 'bg-white/20'
+                }`}
+              />
             ))}
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Visualizer / Controls */}
-      <div className="relative">
-        {/* Waveform Placeholder */}
-        <div className="h-32 flex items-center justify-center gap-1 mb-8">
-          {isRecording ? (
-            Array.from({ length: 20 }).map((_, i) => (
+      {/* Main Content - Focus Mode */}
+      <div className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-4xl">
+          <AnimatePresence mode="wait">
+            {/* Question State */}
+            {state === 'question' && currentQuestion && (
               <motion.div
-                key={i}
-                className="w-2 bg-purple-500 rounded-full"
-                animate={{
-                  height: [20, Math.random() * 80 + 20, 20],
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 0.5,
-                  delay: i * 0.05,
-                }}
-              />
-            ))
-          ) : (
-            <div className="h-1 w-full bg-white/5 rounded-full" />
+                key="question"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="text-center space-y-8"
+              >
+                <div className="space-y-4">
+                  <span className="inline-block px-4 py-1.5 bg-purple-500/20 text-purple-300 rounded-full text-sm font-medium">
+                    {currentQuestion.category}
+                  </span>
+                  <h2 className="text-3xl md:text-4xl font-bold text-white leading-relaxed">
+                    {currentQuestion.question_text}
+                  </h2>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <button
+                    onClick={() => speakQuestion(currentQuestion.question_text)}
+                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all"
+                  >
+                    <Volume2 className="w-5 h-5" />
+                    Hear Question
+                  </button>
+                  <button
+                    onClick={startRecording}
+                    className="inline-flex items-center justify-center gap-2 px-8 py-3 glow-button text-white rounded-xl font-medium"
+                  >
+                    <Mic className="w-5 h-5" />
+                    Start Answer
+                  </button>
+                </div>
+
+                {currentQuestion.tips && currentQuestion.tips.length > 0 && (
+                  <div className="glass-panel p-6 text-left max-w-2xl mx-auto">
+                    <p className="text-sm font-medium text-purple-300 mb-3">💡 Tips</p>
+                    <ul className="space-y-2">
+                      {currentQuestion.tips.map((tip, idx) => (
+                        <li key={idx} className="text-sm text-white/70 flex gap-2">
+                          <ChevronRight className="w-4 h-4 text-purple-400 flex-shrink-0 mt-0.5" />
+                          <span>{tip}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </motion.div>
+            )}
+
+            {/* AI Speaking State */}
+            {state === 'ai-speaking' && (
+              <motion.div
+                key="ai-speaking"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-center space-y-8"
+              >
+                <div className="w-full h-64">
+                  <AudioVisualizer mode="ai-speaking" className="rounded-2xl" />
+                </div>
+                <p className="text-xl text-purple-300 font-medium">AI is reading the question...</p>
+              </motion.div>
+            )}
+
+            {/* Thinking State */}
+            {state === 'thinking' && (
+              <motion.div
+                key="thinking"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-center space-y-8"
+              >
+                <h3 className="text-2xl font-bold text-white">Take a moment to think...</h3>
+                <p className="text-white/60">When you're ready, click below to start recording</p>
+                <button
+                  onClick={startRecording}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 glow-button text-white rounded-xl font-medium text-lg"
+                >
+                  <Mic className="w-6 h-6" />
+                  I'm Ready - Start Recording
+                </button>
+              </motion.div>
+            )}
+
+            {/* Recording State */}
+            {state === 'recording' && (
+              <motion.div
+                key="recording"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="space-y-8"
+              >
+                <div className="w-full h-64">
+                  <AudioVisualizer
+                    mode="user-recording"
+                    stream={audioStreamRef.current}
+                    className="rounded-2xl"
+                  />
+                </div>
+
+                <div className="text-center space-y-4">
+                  <div className="text-5xl font-mono font-bold text-white">{formatTime(timer)}</div>
+                  <div className="flex items-center justify-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'}`} />
+                    <span className="text-white/60">{isPaused ? 'Paused' : 'Recording'}</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-3 justify-center">
+                  {!isPaused ? (
+                    <button
+                      onClick={pauseRecording}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-yellow-600 hover:bg-yellow-700 text-white rounded-xl font-medium transition-all"
+                    >
+                      <Pause className="w-5 h-5" />
+                      Pause
+                    </button>
+                  ) : (
+                    <button
+                      onClick={resumeRecording}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-all"
+                    >
+                      <Play className="w-5 h-5" />
+                      Resume
+                    </button>
+                  )}
+                  <button
+                    onClick={restartRecording}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-medium transition-all"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                    Restart
+                  </button>
+                  <button
+                    onClick={handleSubmitAnswer}
+                    disabled={timer < 3}
+                    className="inline-flex items-center gap-2 px-8 py-3 glow-button text-white rounded-xl font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Square className="w-5 h-5" />
+                    Done - Submit Answer
+                  </button>
+                </div>
+
+                {timer < 3 && (
+                  <p className="text-sm text-white/50 text-center">
+                    Record for at least 3 seconds to submit
+                  </p>
+                )}
+              </motion.div>
+            )}
+
+            {/* Processing State */}
+            {state === 'processing' && (
+              <motion.div
+                key="processing"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="text-center space-y-8"
+              >
+                <div className="w-full h-64">
+                  <AudioVisualizer mode="processing" className="rounded-2xl" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Analyzing your answer...</h3>
+                  <p className="text-white/60">Our AI is evaluating your response using the STAR framework</p>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Feedback State */}
+            {state === 'feedback' && currentFeedback && (
+              <motion.div
+                key="feedback"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="space-y-6"
+              >
+                {/* Overall Score */}
+                <div className="glass-panel p-8 text-center">
+                  <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 mb-4">
+                    <span className="text-4xl font-bold text-white">
+                      {Math.round(currentFeedback.overall_score)}
+                    </span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Answer Score</h3>
+                  <div className="flex gap-4 justify-center text-sm">
+                    <div>
+                      <span className="text-white/50">Clarity:</span>
+                      <span className="text-white font-medium ml-2">{currentFeedback.clarity_score}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-white/50">Relevance:</span>
+                      <span className="text-white font-medium ml-2">{currentFeedback.relevance_score}/100</span>
+                    </div>
+                    <div>
+                      <span className="text-white/50">Impact:</span>
+                      <span className="text-white font-medium ml-2">{currentFeedback.impact_score}/100</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* STAR Framework */}
+                <div className="glass-panel p-6">
+                  <h4 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                    STAR Framework Analysis
+                  </h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {[
+                      { key: 'has_situation', label: 'Situation', emoji: '📍' },
+                      { key: 'has_task', label: 'Task', emoji: '🎯' },
+                      { key: 'has_action', label: 'Action', emoji: '⚡' },
+                      { key: 'has_result', label: 'Result', emoji: '🏆' },
+                    ].map(({ key, label, emoji }) => (
+                      <div
+                        key={key}
+                        className={`p-4 rounded-xl text-center ${
+                          currentFeedback.star[key as keyof STARScore]
+                            ? 'bg-green-500/20 border border-green-500/30'
+                            : 'bg-red-500/20 border border-red-500/30'
+                        }`}
+                      >
+                        <div className="text-2xl mb-2">{emoji}</div>
+                        <div className="font-medium text-white text-sm">{label}</div>
+                        {currentFeedback.star[key as keyof STARScore] ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-400 mx-auto mt-2" />
+                        ) : (
+                          <X className="w-5 h-5 text-red-400 mx-auto mt-2" />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transcript */}
+                <div className="glass-panel p-6">
+                  <h4 className="text-lg font-bold text-white mb-3">Your Answer</h4>
+                  <p className="text-white/70 leading-relaxed">{currentFeedback.transcript}</p>
+                </div>
+
+                {/* Strengths and Improvements */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  {currentFeedback.strengths && currentFeedback.strengths.length > 0 && (
+                    <div className="glass-panel p-6">
+                      <h4 className="text-lg font-bold text-green-400 mb-3">✅ Strengths</h4>
+                      <ul className="space-y-2">
+                        {currentFeedback.strengths.map((strength, idx) => (
+                          <li key={idx} className="text-white/70 text-sm flex gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0 mt-0.5" />
+                            <span>{strength}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {currentFeedback.improvements && currentFeedback.improvements.length > 0 && (
+                    <div className="glass-panel p-6">
+                      <h4 className="text-lg font-bold text-yellow-400 mb-3">💡 Improvements</h4>
+                      <ul className="space-y-2">
+                        {currentFeedback.improvements.map((improvement, idx) => (
+                          <li key={idx} className="text-white/70 text-sm flex gap-2">
+                            <ChevronRight className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                            <span>{improvement}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+
+                {/* Ideal Answer */}
+                {currentFeedback.ideal_answer && (
+                  <div className="glass-panel p-6 bg-purple-500/10 border border-purple-500/20">
+                    <h4 className="text-lg font-bold text-purple-300 mb-3">✨ Example Answer</h4>
+                    <p className="text-white/70 leading-relaxed">{currentFeedback.ideal_answer}</p>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex gap-4 justify-center pt-4">
+                  <button
+                    onClick={() => {
+                      setCurrentFeedback(null)
+                      setState('question')
+                    }}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-xl font-medium transition-all"
+                  >
+                    <RotateCcw className="w-5 h-5" />
+                    Try Again
+                  </button>
+                  <button
+                    onClick={handleNextQuestion}
+                    className="inline-flex items-center gap-2 px-8 py-3 glow-button text-white rounded-xl font-medium"
+                  >
+                    {isLastQuestion ? (
+                      <>
+                        Complete Session
+                        <CheckCircle2 className="w-5 h-5" />
+                      </>
+                    ) : (
+                      <>
+                        Next Question
+                        <ArrowRight className="w-5 h-5" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Error Display */}
+          {error && state !== 'complete' && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="glass-panel p-4 bg-red-500/10 border border-red-500/30 mt-6"
+            >
+              <p className="text-red-300 text-sm text-center">{error}</p>
+            </motion.div>
           )}
         </div>
-
-        {/* Timer */}
-        {isRecording && (
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -mt-8">
-            <span className="text-red-400 font-mono text-lg animate-pulse">
-              {Math.floor(timer / 60)}:{(timer % 60).toString().padStart(2, '0')}
-            </span>
-          </div>
-        )}
-
-        {/* Main Action Button */}
-        <div className="flex justify-center">
-          {isProcessing ? (
-            <div className="flex flex-col items-center">
-              <Loader2 className="w-16 h-16 text-purple-500 animate-spin mb-4" />
-              <span className="text-white/60">Analyzing your answer...</span>
-            </div>
-          ) : !isRecording ? (
-            <button
-              onClick={onStart}
-              className="group relative flex items-center justify-center w-24 h-24 rounded-full bg-red-500 hover:bg-red-600 transition-all hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(239,68,68,0.4)]"
-            >
-              <Mic className="w-10 h-10 text-white" />
-              <div className="absolute inset-0 rounded-full border-2 border-white/20 animate-ping opacity-20" />
-            </button>
-          ) : (
-            <button
-              onClick={onStop}
-              className="flex items-center justify-center w-24 h-24 rounded-full bg-white/10 hover:bg-white/20 transition-all hover:scale-105 active:scale-95 border-2 border-white/20"
-            >
-              <Square className="w-8 h-8 text-white fill-white" />
-            </button>
-          )}
-        </div>
-
-        {!isRecording && !isProcessing && (
-          <p className="text-center text-white/40 mt-6">
-            Click the microphone to start recording your answer
-          </p>
-        )}
       </div>
-    </motion.div>
-  )
-}
-
-function DebriefView({
-  question,
-  feedback,
-  onNext,
-  onRetry,
-  isLast
-}: {
-  question: Question
-  feedback: Feedback | null
-  onNext: () => void
-  onRetry: () => void
-  isLast: boolean
-}) {
-  if (!feedback) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
-      </div>
-    )
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, x: 20 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full"
-    >
-      {/* Left: Transcript */}
-      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 flex flex-col">
-        <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-          <Mic className="w-4 h-4 text-purple-400" />
-          Your Answer Transcript
-        </h3>
-        <div className="flex-1 overflow-y-auto space-y-4 text-white/80 leading-relaxed p-4 bg-black/20 rounded-xl text-sm max-h-96">
-          <p className="whitespace-pre-wrap">{feedback.transcript}</p>
-        </div>
-        <div className="mt-4 flex gap-4 text-xs text-white/40">
-          <div>Duration: {Math.floor(feedback.duration)}s</div>
-          <div>Words: {feedback.wordCount}</div>
-        </div>
-      </div>
-
-      {/* Right: Feedback & Scores */}
-      <div className="space-y-6">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 gap-4">
-          <ScoreCard label="STAR Method" score={feedback.scores.star} />
-          <ScoreCard label="Clarity" score={feedback.scores.clarity} />
-          <ScoreCard label="Relevance" score={feedback.scores.relevance} />
-          <ScoreCard label="Impact" score={feedback.scores.impact} />
-        </div>
-
-        {/* AI Summary */}
-        <div className="bg-gradient-to-br from-purple-500/10 to-blue-500/10 border border-purple-500/20 rounded-2xl p-6">
-          <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            AI Feedback
-          </h3>
-          <p className="text-white/70 text-sm whitespace-pre-wrap">
-            {feedback.feedback}
-          </p>
-        </div>
-
-        {/* Ideal Answer Example */}
-        {feedback.idealAnswer && (
-          <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-2xl p-6">
-            <h3 className="text-lg font-semibold text-white mb-2 flex items-center gap-2">
-              💡 Example Strong Answer
-            </h3>
-            <p className="text-white/70 text-sm whitespace-pre-wrap leading-relaxed">
-              {feedback.idealAnswer}
-            </p>
-            <p className="text-white/40 text-xs mt-4 italic">
-              This is an AI-generated example to guide your practice. Use it to understand structure and approach.
-            </p>
-          </div>
-        )}
-
-        {/* Actions */}
-        <div className="flex gap-4 pt-4">
-          <button
-            onClick={onRetry}
-            className="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-medium transition-colors flex items-center justify-center gap-2"
-          >
-            <RotateCcw className="w-4 h-4" />
-            Retry Question
-          </button>
-          <button
-            onClick={onNext}
-            className="flex-1 py-3 px-4 rounded-xl bg-purple-500 hover:bg-purple-600 text-white font-bold transition-colors flex items-center justify-center gap-2"
-          >
-            {isLast ? 'Finish Session' : 'Next Question'}
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  )
-}
-
-function ScoreCard({ label, score }: { label: string; score: number }) {
-  const getColor = (s: number) => {
-    if (s >= 90) return 'text-green-400 bg-green-400/10 border-green-400/20'
-    if (s >= 70) return 'text-blue-400 bg-blue-400/10 border-blue-400/20'
-    return 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20'
-  }
-
-  const style = getColor(score)
-
-  return (
-    <div className={`p-4 rounded-xl border ${style} flex flex-col items-center justify-center text-center`}>
-      <span className="text-3xl font-bold mb-1">{score}</span>
-      <span className="text-xs opacity-80 uppercase tracking-wider">{label}</span>
     </div>
   )
 }

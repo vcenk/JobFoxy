@@ -17,7 +17,8 @@
       "Bash(move \"components\\resume\\studio\\ResumeCanvas.tsx\" \"components\\resume\\studio\\ResumeCanvas.old.tsx\")",
       "Bash(move \"components\\resume\\studio\\ResumeCanvas.new.tsx\" \"components\\resume\\studio\\ResumeCanvas.tsx\")",
       "Bash(git init:*)",
-      "Bash(git remote add:*)"
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
     ]
   }
 }

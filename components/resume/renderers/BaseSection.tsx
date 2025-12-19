@@ -20,7 +20,7 @@ export const BaseSection: React.FC<BaseSectionProps> = ({
   onClick,
   children,
 }) => {
-  const { designerSettings } = useResume()
+  const { sectionSettings } = useResume()
 
   const getSectionClassName = () => {
     const baseClasses = 'print-avoid-break cursor-pointer transition-all p-2 rounded-lg'
@@ -36,10 +36,7 @@ export const BaseSection: React.FC<BaseSectionProps> = ({
       onClick={onClick}
       className={getSectionClassName()}
       style={{
-        fontFamily:
-          designerSettings.fontFamily === 'inter'
-            ? 'var(--font-inter), sans-serif'
-            : '-apple-system, BlinkMacSystemFont, sans-serif',
+        textAlign: sectionSettings[sectionKey]?.textAlign || 'left',
       }}
     >
       {children}

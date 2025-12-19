@@ -118,12 +118,49 @@ export const ResumeCanvas = () => {
     return isVisible && isRegistered
   })
 
-  const headerContent = visibleSections.filter(id => headerSections.includes(id))
-  const mainColContent: typeof visibleSections = []
-  const sideColContent: typeof visibleSections = []
+  // Check if a section has content
+  const sectionHasContent = (sectionId: string): boolean => {
+    const data = resumeData as any
+
+    switch (sectionId) {
+      case 'contact':
+        return !!(data.contact && (data.contact.firstName || data.contact.lastName || data.contact.email))
+      case 'targetTitle':
+        return !!(data.targetTitle)
+      case 'summary':
+        return !!(data.summary && data.summary.content)
+      case 'experience':
+        return !!(data.experience && data.experience.length > 0)
+      case 'education':
+        return !!(data.education && data.education.length > 0)
+      case 'skills':
+        return !!(data.skills && (data.skills.technical?.length > 0 || data.skills.soft?.length > 0 || data.skills.other?.length > 0))
+      case 'projects':
+        return !!(data.projects && data.projects.length > 0)
+      case 'certifications':
+        return !!(data.certifications && data.certifications.length > 0)
+      case 'awards':
+        return !!(data.awards && data.awards.length > 0)
+      case 'volunteer':
+        return !!(data.volunteer && data.volunteer.length > 0)
+      case 'publications':
+        return !!(data.publications && data.publications.length > 0)
+      case 'languages':
+        return !!(data.languages && data.languages.length > 0)
+      default:
+        return false
+    }
+  }
+
+  // Filter sections that have actual content
+  const sectionsWithContent = visibleSections.filter(sectionHasContent)
+
+  const headerContent = sectionsWithContent.filter(id => headerSections.includes(id))
+  const mainColContent: typeof sectionsWithContent = []
+  const sideColContent: typeof sectionsWithContent = []
 
   if (designerSettings.columns === 2) {
-    visibleSections.forEach(id => {
+    sectionsWithContent.forEach(id => {
       if (headerSections.includes(id)) return
       if (sidebarSections.includes(id)) {
         sideColContent.push(id)
@@ -147,9 +184,7 @@ export const ResumeCanvas = () => {
   }
 
   // Check if there's content after header sections
-  const hasBodyContent = designerSettings.columns === 2
-    ? (mainColContent.length > 0 || sideColContent.length > 0)
-    : visibleSections.filter(id => !headerSections.includes(id)).length > 0
+  const hasBodyContent = sectionsWithContent.some(id => !headerSections.includes(id))
 
   return (
     <div className="flex-1 h-full overflow-y-auto p-8 flex items-start justify-center bg-gray-900/50">
@@ -187,7 +222,7 @@ export const ResumeCanvas = () => {
           </div>
         ) : (
           <div>
-            {visibleSections
+            {sectionsWithContent
               .filter(id => !headerSections.includes(id))
               .map((sectionId, index, arr) => (
                 <React.Fragment key={sectionId}>

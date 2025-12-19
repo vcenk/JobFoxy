@@ -30,6 +30,7 @@ interface SectionSettings {
   customTitle?: string
   listStyle?: 'disc' | 'circle' | 'square' | 'none'
   layout?: 'list' | 'grid' | 'columns'
+  textAlign?: 'left' | 'center' | 'right' | 'justify'
 }
 
 interface ResumeContextType {
@@ -62,11 +63,11 @@ interface ResumeContextType {
     margins: number
     columns: 1 | 2
     headerSpan: boolean
-    fontFamily: 'inter' | 'sf-pro'
+    fontFamily: 'inter' | 'sf-pro' | 'roboto' | 'lato' | 'open-sans' | 'montserrat' | 'raleway' | 'poppins' | 'playfair' | 'merriweather' | 'georgia' | 'times'
     paperSize: 'letter' | 'a4'
     lineHeight: number
     accentColor: string
-    dateFormat: 'MM/YYYY' | 'Month Year'
+    dateFormat: 'MM/YYYY' | 'Month Year' | 'Mon YYYY' | 'YYYY-MM' | 'YYYY'
     dividerStyle: 'line' | 'dots' | 'none'
     pageNumbers: {
       enabled: boolean
@@ -164,11 +165,11 @@ export const ResumeProvider = ({ children }: { children: ReactNode }) => {
     margins: 40,
     columns: 1 as 1 | 2,
     headerSpan: true,
-    fontFamily: 'inter' as 'inter' | 'sf-pro',
+    fontFamily: 'inter' as 'inter' | 'sf-pro' | 'roboto' | 'lato' | 'open-sans' | 'montserrat' | 'raleway' | 'poppins' | 'playfair' | 'merriweather' | 'georgia' | 'times',
     paperSize: 'letter' as 'letter' | 'a4',
     lineHeight: 1.5,
     accentColor: '#6C47FF',
-    dateFormat: 'MM/YYYY' as 'MM/YYYY' | 'Month Year',
+    dateFormat: 'MM/YYYY' as 'MM/YYYY' | 'Month Year' | 'Mon YYYY' | 'YYYY-MM' | 'YYYY',
     dividerStyle: 'line' as 'line' | 'dots' | 'none',
     pageNumbers: {
       enabled: false,

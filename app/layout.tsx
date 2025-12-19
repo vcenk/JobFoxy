@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, Inter, Roboto, Open_Sans, Lato, Montserrat, Playfair_Display } from 'next/font/google'
+import { Plus_Jakarta_Sans, Inter, Roboto, Open_Sans, Lato, Montserrat, Playfair_Display, Raleway, Poppins, Merriweather } from 'next/font/google'
 import './globals.css'
 
 // Plus Jakarta Sans - modern, clean font similar to Open Runde
@@ -43,14 +43,34 @@ const montserrat = Montserrat({
   display: 'swap',
 })
 
+const raleway = Raleway({
+  subsets: ['latin'],
+  variable: '--font-raleway',
+  display: 'swap',
+})
+
+const poppins = Poppins({
+  subsets: ['latin'],
+  variable: '--font-poppins',
+  display: 'swap',
+  weight: ['400', '600', '700'],
+})
+
 const playfair = Playfair_Display({
   subsets: ['latin'],
   variable: '--font-playfair',
   display: 'swap',
 })
 
+const merriweather = Merriweather({
+  subsets: ['latin'],
+  variable: '--font-merriweather',
+  display: 'swap',
+  weight: ['400', '700'],
+})
+
 export const metadata: Metadata = {
-  title: 'EchoMind - AI-Powered Interview Preparation',
+  title: 'Job Foxy - AI-Powered Interview Preparation',
   description: 'Master your interviews with AI-powered coaching, voice feedback, and personalized practice sessions.',
 }
 
@@ -66,7 +86,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
-      <body className={`${plusJakarta.variable} ${inter.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${playfair.variable} font-sans antialiased`}>
+      <body className={`${plusJakarta.variable} ${inter.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${raleway.variable} ${poppins.variable} ${playfair.variable} ${merriweather.variable} font-sans antialiased`}>
         {children}
       </body>
     </html>

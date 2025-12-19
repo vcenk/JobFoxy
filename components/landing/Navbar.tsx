@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X } from 'lucide-react'
-import JobFoxyLogo from '@/components/assets/JobFoxy_Logo.png'
+import JobFoxyLogo from '@/components/assets/JobFoxy.svg'
 
 interface NavItem {
   name: string
@@ -60,7 +60,7 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          isScrolled ? 'h-12 px-4' : 'h-22 px-10'
+          isScrolled ? 'h-24 px-4' : 'h-32 px-10'
 
         }`}
       >
@@ -72,7 +72,7 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
           }`}
         >
           <div className={`flex items-center justify-between transition-all duration-500 ${
-            isScrolled ? 'h-18 px-5 pl-7' : 'h-24 px-10 sm:px-12 lg:px-20'
+            isScrolled ? 'h-24 px-5 pl-7' : 'h-32 px-10 sm:px-12 lg:px-20'
 
           }`}>
             {/* Logo */}
@@ -82,7 +82,9 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
                 className="flex items-center gap-2"
               >
                 {/* Logo Icon */}
-                <div className="relative w-12 h-12">
+                <div className={`relative transition-all duration-500 ${
+                  isScrolled ? 'w-36 h-36' : 'w-48 h-48'
+                }`}>
                   <Image
                     src={JobFoxyLogo}
                     alt="Job Foxy Logo"
@@ -90,9 +92,7 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
                     className="object-contain"
                   />
                 </div>
-                <span className="text-[26px] font-bold text-[#0f0f0f] tracking-[-0.02em]">
-                  Job Foxy
-                </span>
+
               </motion.div>
             </Link>
 
@@ -103,7 +103,7 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
                   key={item.name}
                   href={item.href}
                   onClick={(e) => handleSmoothScroll(e, item.href)}
-                  className="px-5 py-2.5 text-[#1a1a1a] hover:text-[#0f0f0f] text-[17px] font-medium rounded-full hover:bg-black/[0.04] transition-all duration-200"
+                  className="px-5 py-2.5 text-[#1a1a1a] hover:text-[#0f0f0f] text-[20px] font-medium rounded-full hover:bg-black/[0.04] transition-all duration-200"
                 >
                   {item.name}
                 </a>
@@ -117,8 +117,8 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
                   href="auth\register"
                   className={`inline-flex items-center justify-center bg-[#0f0f0f] text-white font-semibold hover:bg-[#262626] transition-all ${
                     isScrolled 
-                      ? 'px-5 py-2.5 text-[15px] rounded-full' 
-                      : 'px-6 py-3 text-[16px] rounded-full'
+                      ? 'px-5 py-2.5 text-[16px] rounded-full' 
+                      : 'px-6 py-3 text-[18px] rounded-full'
                   }`}
                 >
                   Try Job Foxy free
@@ -129,7 +129,7 @@ export function Navbar({ navItems = defaultNavItems }: NavbarProps) {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="lg:hidden p-2.5 rounded-full hover:bg-black/[0.04] transition-colors"
+              className="lg:hidden p-2.5 rounded-full hover:bg-black/[0.0] transition-colors"
             >
               {mobileMenuOpen ? (
                 <X className="h-6 w-6 text-[#0f0f0f]" />

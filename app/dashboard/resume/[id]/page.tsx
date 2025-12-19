@@ -21,12 +21,19 @@ interface ResumeEditorContentProps {
 
 function ResumeEditorContent({ params }: ResumeEditorContentProps) {
   const router = useRouter()
-  const { resumeData, setResumeData } = useResume()
+  const {
+    resumeData,
+    setResumeData,
+    sectionSettings,
+    designerSettings,
+    updateDesignerSettings,
+    updateSectionSettings
+  } = useResume()
   const [resumeId, setResumeId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [resumeTitle, setResumeTitle] = useState('')
   const [showPreview, setShowPreview] = useState(false)
-  
+
   const [viewMode, setViewMode] = useState<'builder' | 'job-analysis' | 'cover-letter'>('builder');
 
   // Unwrap params (handle both Promise and direct object)
@@ -38,10 +45,19 @@ function ResumeEditorContent({ params }: ResumeEditorContentProps) {
     resolveParams()
   }, [params])
 
-  // Auto-save hook
+  // Combine all data for saving
+  const fullResumeData = useMemo(() => ({
+    ...resumeData,
+    _settings: {
+      sections: sectionSettings,
+      designer: designerSettings
+    }
+  }), [resumeData, sectionSettings, designerSettings])
+
+  // Auto-save hook with full data
   const { saving, lastSaved, triggerSave } = useAutoSave({
     resumeId: resumeId || '',
-    data: resumeData,
+    data: fullResumeData,
     enabled: !loading && resumeId !== null,
   })
 
@@ -57,7 +73,28 @@ function ResumeEditorContent({ params }: ResumeEditorContentProps) {
         if (data.success && data.resume) {
           setResumeTitle(data.resume.title)
           if (data.resume.content) {
-            setResumeData(data.resume.content)
+            const content = data.resume.content
+
+            // Extract settings if they exist
+            if (content._settings) {
+              // Load section settings
+              if (content._settings.sections) {
+                Object.entries(content._settings.sections).forEach(([key, value]: [string, any]) => {
+                  updateSectionSettings(key as any, value)
+                })
+              }
+
+              // Load designer settings
+              if (content._settings.designer) {
+                updateDesignerSettings(content._settings.designer)
+              }
+
+              // Remove _settings from resumeData before setting
+              const { _settings, ...resumeContent } = content
+              setResumeData(resumeContent)
+            } else {
+              setResumeData(content)
+            }
           }
         }
       } catch (error) {
@@ -68,7 +105,7 @@ function ResumeEditorContent({ params }: ResumeEditorContentProps) {
     }
 
     fetchResume()
-  }, [resumeId, setResumeData])
+  }, [resumeId, setResumeData, updateSectionSettings, updateDesignerSettings])
 
   // Handle Print / Export PDF
   const handleExportPDF = () => {

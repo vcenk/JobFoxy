@@ -115,6 +115,29 @@ export const Inspector = ({ triggerSave }: { triggerSave: (dataOverride?: any) =
                       />
                     </div>
 
+                    {/* Text Alignment for this section */}
+                    <div>
+                      <label className="block text-sm font-medium text-white/80 mb-2">Text Alignment</label>
+                      <div className="grid grid-cols-4 gap-2">
+                        {(['left', 'center', 'right', 'justify'] as const).map(align => (
+                          <button
+                            key={align}
+                            onClick={() => updateSectionSettings(activeSection, { textAlign: align })}
+                            className={`
+                              px-2 py-1.5 rounded-lg text-xs font-medium capitalize transition-all
+                              ${
+                                (sectionSettings[activeSection]?.textAlign || 'left') === align
+                                  ? 'bg-purple-500/30 text-white border border-purple-500/50'
+                                  : 'bg-white/10 text-white/60 hover:bg-white/15'
+                              }
+                            `}
+                          >
+                            {align}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
                     {/* List Style Control (for sections with bullet points) */}
                     {['experience', 'projects', 'certifications', 'volunteer', 'publications'].includes(activeSection) && (
                       <div>
@@ -252,8 +275,22 @@ export const Inspector = ({ triggerSave }: { triggerSave: (dataOverride?: any) =
                       onChange={e => updateDesignerSettings({ fontFamily: e.target.value as any })}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="inter" className="bg-gray-900 text-white">Inter (Sans)</option>
-                      <option value="sf-pro" className="bg-gray-900 text-white">SF Pro (System)</option>
+                      <optgroup label="Modern Sans-Serif" className="bg-gray-900">
+                        <option value="inter" className="bg-gray-900 text-white">Inter</option>
+                        <option value="sf-pro" className="bg-gray-900 text-white">SF Pro</option>
+                        <option value="roboto" className="bg-gray-900 text-white">Roboto</option>
+                        <option value="lato" className="bg-gray-900 text-white">Lato</option>
+                        <option value="open-sans" className="bg-gray-900 text-white">Open Sans</option>
+                        <option value="montserrat" className="bg-gray-900 text-white">Montserrat</option>
+                        <option value="raleway" className="bg-gray-900 text-white">Raleway</option>
+                        <option value="poppins" className="bg-gray-900 text-white">Poppins</option>
+                      </optgroup>
+                      <optgroup label="Serif" className="bg-gray-900">
+                        <option value="playfair" className="bg-gray-900 text-white">Playfair Display</option>
+                        <option value="merriweather" className="bg-gray-900 text-white">Merriweather</option>
+                        <option value="georgia" className="bg-gray-900 text-white">Georgia</option>
+                        <option value="times" className="bg-gray-900 text-white">Times New Roman</option>
+                      </optgroup>
                     </select>
                   </div>
 
@@ -471,8 +508,11 @@ export const Inspector = ({ triggerSave }: { triggerSave: (dataOverride?: any) =
                       onChange={e => updateDesignerSettings({ dateFormat: e.target.value as any })}
                       className="w-full px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     >
-                      <option value="MM/YYYY">MM/YYYY</option>
-                      <option value="Month Year">Month Year</option>
+                      <option value="MM/YYYY" className="bg-gray-900 text-white">MM/YYYY (01/2023)</option>
+                      <option value="Month Year" className="bg-gray-900 text-white">Month Year (January 2023)</option>
+                      <option value="Mon YYYY" className="bg-gray-900 text-white">Mon YYYY (Jan 2023)</option>
+                      <option value="YYYY-MM" className="bg-gray-900 text-white">YYYY-MM (2023-01)</option>
+                      <option value="YYYY" className="bg-gray-900 text-white">YYYY (2023)</option>
                     </select>
                   </div>
 

@@ -39,23 +39,42 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
       ? `
         @media print {
           @page {
-            margin-bottom: 0.6in;
+            margin-bottom: 0.75in;
+            @bottom-${alignment} {
+              content: counter(page);
+              font-size: 9pt;
+              color: #666;
+            }
           }
 
           .resume-page-footer {
             display: block;
-            position: fixed;
-            bottom: 0.25in;
-            left: ${alignmentMap[alignment]};
-            transform: ${transformMap[alignment]};
+            position: running(footer);
             font-size: 9pt;
             color: #666;
             text-align: ${alignment};
           }
         }
+
+        @media screen {
+          .resume-page-footer {
+            display: ${enabled ? 'block' : 'none'};
+            text-align: ${alignment};
+            margin-top: 20px;
+            padding-top: 10px;
+            border-top: 1px solid #e0e0e0;
+            font-size: 9pt;
+            color: #666;
+          }
+        }
       `
       : `
         @media print {
+          .resume-page-footer {
+            display: none;
+          }
+        }
+        @media screen {
           .resume-page-footer {
             display: none;
           }
@@ -68,14 +87,12 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-      }
-      ${pageNumberCss}
 
-      @media screen {
-        .resume-page-footer {
-          display: none;
+        @page {
+          size: ${designerSettings.paperSize === 'letter' ? '8.5in 11in' : 'A4'};
         }
       }
+      ${pageNumberCss}
     `
     return <style>{css}</style>
   }
@@ -86,6 +103,25 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
       return `${resumeData.contact.firstName} ${resumeData.contact.lastName}`
     }
     return 'Resume'
+  }
+
+  // Font family mapping using CSS variables from layout
+  const getFontFamily = () => {
+    const fontMap: Record<string, string> = {
+      'inter': 'var(--font-inter), sans-serif',
+      'sf-pro': '-apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif',
+      'roboto': 'var(--font-roboto), sans-serif',
+      'lato': 'var(--font-lato), sans-serif',
+      'open-sans': 'var(--font-open-sans), sans-serif',
+      'montserrat': 'var(--font-montserrat), sans-serif',
+      'raleway': 'var(--font-raleway), sans-serif',
+      'poppins': 'var(--font-poppins), sans-serif',
+      'playfair': 'var(--font-playfair), serif',
+      'merriweather': 'var(--font-merriweather), serif',
+      'georgia': 'Georgia, serif',
+      'times': '"Times New Roman", Times, serif',
+    }
+    return fontMap[designerSettings.fontFamily] || fontMap['inter']
   }
 
   return (
@@ -101,20 +137,17 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
           paddingBottom: designerSettings.pageNumbers.enabled
             ? `${designerSettings.margins + 30}px`
             : `${designerSettings.margins}px`,
-          fontFamily:
-            designerSettings.fontFamily === 'inter'
-              ? 'var(--font-inter), sans-serif'
-              : '-apple-system, BlinkMacSystemFont, sans-serif',
+          fontFamily: getFontFamily(),
           lineHeight: designerSettings.lineHeight,
           fontSize: `${designerSettings.fontSizeBody}pt`,
         }}
       >
         {children}
 
-        {/* Page footer - only visible in print */}
+        {/* Page footer - visible in print and as preview on screen */}
         {designerSettings.pageNumbers.enabled && (
           <div className="resume-page-footer">
-            {getFooterName()}
+            <span className="page-number">1</span>
           </div>
         )}
       </div>
@@ -128,6 +161,10 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
             width: 100% !important;
             height: auto !important;
             margin: 0 !important;
+          }
+
+          .page-number::after {
+            content: counter(page);
           }
         }
       `}</style>

@@ -1,6 +1,22 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
+CREATE TABLE public.analysis_results (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  resume_id uuid NOT NULL,
+  job_description_id uuid,
+  ats_score integer NOT NULL,
+  jd_match_score integer,
+  skills_fit_score integer NOT NULL,
+  analysis_data jsonb NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT analysis_results_pkey PRIMARY KEY (id),
+  CONSTRAINT analysis_results_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id),
+  CONSTRAINT analysis_results_resume_id_fkey FOREIGN KEY (resume_id) REFERENCES public.resumes(id),
+  CONSTRAINT analysis_results_job_description_id_fkey FOREIGN KEY (job_description_id) REFERENCES public.job_descriptions(id)
+);
 CREATE TABLE public.cover_letters (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,

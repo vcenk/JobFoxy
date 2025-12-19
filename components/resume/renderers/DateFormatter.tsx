@@ -23,17 +23,26 @@ export const DateFormatter: React.FC<DateFormatterProps> = ({ dateStr, current }
 
   const year = date.getUTCFullYear()
   const month = date.getUTCMonth()
-
-  if (designerSettings.dateFormat === 'Month Year') {
-    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
-    return <>{`${monthName} ${year}`}</>
-  }
-
   const monthPadded = String(month + 1).padStart(2, '0')
-  return <>{`${monthPadded}/${year}`}</>
+
+  switch (designerSettings.dateFormat) {
+    case 'Month Year':
+      const monthNameLong = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
+      return <>{`${monthNameLong} ${year}`}</>
+    case 'Mon YYYY':
+      const monthNameShort = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date)
+      return <>{`${monthNameShort} ${year}`}</>
+    case 'YYYY-MM':
+      return <>{`${year}-${monthPadded}`}</>
+    case 'YYYY':
+      return <>{year}</>
+    case 'MM/YYYY':
+    default:
+      return <>{`${monthPadded}/${year}`}</>
+  }
 }
 
-export const formatDate = (dateStr: string | undefined, dateFormat: 'MM/YYYY' | 'Month Year'): string => {
+export const formatDate = (dateStr: string | undefined, dateFormat: 'MM/YYYY' | 'Month Year' | 'Mon YYYY' | 'YYYY-MM' | 'YYYY'): string => {
   if (!dateStr) return ''
 
   const date = new Date(dateStr)
@@ -43,12 +52,21 @@ export const formatDate = (dateStr: string | undefined, dateFormat: 'MM/YYYY' | 
 
   const year = date.getUTCFullYear()
   const month = date.getUTCMonth()
-
-  if (dateFormat === 'Month Year') {
-    const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
-    return `${monthName} ${year}`
-  }
-
   const monthPadded = String(month + 1).padStart(2, '0')
-  return `${monthPadded}/${year}`
+
+  switch (dateFormat) {
+    case 'Month Year':
+      const monthNameLong = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(date)
+      return `${monthNameLong} ${year}`
+    case 'Mon YYYY':
+      const monthNameShort = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date)
+      return `${monthNameShort} ${year}`
+    case 'YYYY-MM':
+      return `${year}-${monthPadded}`
+    case 'YYYY':
+      return `${year}`
+    case 'MM/YYYY':
+    default:
+      return `${monthPadded}/${year}`
+  }
 }
