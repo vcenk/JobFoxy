@@ -11,7 +11,7 @@ import { z } from 'zod'
 import { createClient } from '@/lib/clients/supabaseBrowserClient'  // lib/clients/supabaseBrowserClient.ts
 import { AlertCircle, Loader2, ArrowLeft, CheckCircle2, Mail } from 'lucide-react'
 import { motion } from 'framer-motion'
-import JobFoxyLogo from '@/components/assets/JobFoxy_Logo.png'
+import JobFoxyLogo from '@/components/assets/JobFoxy.svg'
 
 const forgotPasswordSchema = z.object({
   email: z.string().email('Invalid email address'),
