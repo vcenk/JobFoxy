@@ -23,11 +23,11 @@ export const BaseSection: React.FC<BaseSectionProps> = ({
   const { sectionSettings } = useResume()
 
   const getSectionClassName = () => {
-    const baseClasses = 'print-avoid-break cursor-pointer transition-all p-2 rounded-lg'
+    const baseClasses = 'print-avoid-break cursor-pointer transition-all p-2 rounded-lg print:p-0 print:rounded-none print:cursor-default'
     if (isActive) {
-      return `${baseClasses} opacity-100 ring-2 ring-purple-500`
+      return `${baseClasses} opacity-100 ring-2 ring-purple-500 print:ring-0 print:shadow-none print:opacity-100`
     }
-    return `${baseClasses} opacity-90 hover:opacity-100`
+    return `${baseClasses} opacity-90 hover:opacity-100 print:opacity-100`
   }
 
   return (

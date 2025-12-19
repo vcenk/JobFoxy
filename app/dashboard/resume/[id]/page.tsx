@@ -275,50 +275,94 @@ function ResumeEditorContent({ params }: ResumeEditorContentProps) {
       {/* Print Styles */}
       <style jsx global>{`
         @media print {
+          /* Reset body and html for clean print */
           body, html {
             margin: 0 !important;
             padding: 0 !important;
             overflow: visible !important;
+            background: white !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
-          /* Hide everything except the canvas */
+          /* Hide ALL UI elements - be explicit */
           .glass-panel,
           nav,
           button,
           header,
           aside,
-          .no-print {
+          .no-print,
+          [class*="bg-gray-900"],
+          [class*="bg-black"],
+          [class*="backdrop-blur"] {
             display: none !important;
+            visibility: hidden !important;
           }
 
-          /* Show only the resume paper */
+          /* Reset container backgrounds and show resume */
+          .flex-1.h-full.overflow-y-auto {
+            display: block !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+
+          /* Show only the resume paper with proper styling */
           #resume-paper, .resume-paper {
             display: block !important;
+            position: relative !important;
             width: 100% !important;
+            max-width: none !important;
             height: auto !important;
             margin: 0 !important;
             padding: 0.5in !important;
             box-shadow: none !important;
             background: white !important;
-          }
-
-          /* For JSON Resume themes */
-          #resume-theme-iframe {
-            display: block !important;
-            width: 100% !important;
-            height: auto !important;
             border: none !important;
           }
 
-          /* Hide scrollbars and other UI elements */
+          /* For JSON Resume themes - print iframe content */
+          #resume-theme-iframe {
+            display: block !important;
+            position: relative !important;
+            width: 100% !important;
+            height: auto !important;
+            min-height: 11in !important;
+            border: none !important;
+            background: white !important;
+          }
+
+          /* Hide scrollbars and reset overflow */
           .overflow-y-auto, .overflow-x-auto {
             overflow: visible !important;
+            background: transparent !important;
+          }
+
+          /* Remove any selection/active styling from sections */
+          [data-resume-section] {
+            opacity: 1 !important;
+            box-shadow: none !important;
+            outline: none !important;
+            border: none !important;
+          }
+
+          /* Remove ring styling from active sections */
+          .ring-2, .ring-purple-500,
+          [class*="ring-"] {
+            --tw-ring-shadow: none !important;
+            --tw-ring-color: transparent !important;
+            box-shadow: none !important;
           }
 
           /* Ensure proper pagination */
           .print-avoid-break {
             page-break-inside: avoid;
             break-inside: avoid;
+          }
+
+          /* Hide cursor pointer styling */
+          .cursor-pointer {
+            cursor: default !important;
           }
         }
       `}</style>

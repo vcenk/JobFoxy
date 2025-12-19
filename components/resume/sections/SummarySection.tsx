@@ -45,10 +45,7 @@ export const SummarySection: React.FC<SectionComponentProps> = ({ isActive, onCl
         {getTitle()}
       </h2>
       <div className="text-gray-700">
-        <RichTextDisplay
-          key={JSON.stringify(resumeData.summary)}
-          content={ensureRichText(resumeData.summary)}
-        />
+        <RichTextDisplay content={ensureRichText(resumeData.summary)} />
       </div>
     </BaseSection>
   )

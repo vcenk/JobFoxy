@@ -87,11 +87,8 @@ export const ExperienceSection: React.FC<SectionComponentProps> = ({ isActive, o
               {exp.bullets && exp.bullets.length > 0 && (
                 <CustomList style={sectionSettings['experience']?.listStyle || 'disc'}>
                   {exp.bullets.map((bullet, bidx) => (
-                    <li key={bidx}>
-                      <RichTextDisplay
-                        key={JSON.stringify(bullet)}
-                        content={ensureRichText(bullet)}
-                      />
+                    <li key={`${idx}-${bidx}`}>
+                      <RichTextDisplay content={ensureRichText(bullet)} />
                     </li>
                   ))}
                 </CustomList>

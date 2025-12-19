@@ -71,10 +71,7 @@ export const ProjectsSection: React.FC<SectionComponentProps> = ({ isActive, onC
               </div>
             </div>
             <div className="text-gray-700 mb-1">
-              <RichTextDisplay
-                key={JSON.stringify(project.description)}
-                content={ensureRichText(project.description)}
-              />
+              <RichTextDisplay content={ensureRichText(project.description)} />
             </div>
             {project.technologies && project.technologies.length > 0 && (
               <p className="text-sm text-gray-600">

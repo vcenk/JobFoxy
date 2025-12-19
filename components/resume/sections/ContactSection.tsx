@@ -23,7 +23,10 @@ export const ContactSection: React.FC<SectionComponentProps> = ({ isActive, onCl
           fontWeight: designerSettings.fontWeightName,
         }}
       >
-        {resumeData.contact.name || 'Your Name'}
+        {resumeData.contact.name ||
+          (resumeData.contact.firstName || resumeData.contact.lastName
+            ? `${resumeData.contact.firstName || ''} ${resumeData.contact.lastName || ''}`.trim()
+            : 'Your Name')}
       </h1>
       <div className="text-sm text-gray-600 space-x-4">
         {resumeData.contact.email && <span>{resumeData.contact.email}</span>}

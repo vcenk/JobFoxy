@@ -67,10 +67,7 @@ export const VolunteerSection: React.FC<SectionComponentProps> = ({ isActive, on
             </div>
             {vol.description && (
               <div className="mt-1 text-gray-700">
-                <RichTextDisplay
-                  key={JSON.stringify(vol.description)}
-                  content={ensureRichText(vol.description)}
-                />
+                <RichTextDisplay content={ensureRichText(vol.description)} />
               </div>
             )}
           </div>

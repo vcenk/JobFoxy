@@ -76,9 +76,9 @@ export const ResumeCanvas = () => {
   // Render JSON Resume theme if selected
   if (selectedJsonResumeTheme) {
     return (
-      <div className="flex-1 h-full overflow-y-auto p-8 flex items-start justify-center bg-gray-900/50 relative">
+      <div className="flex-1 h-full overflow-y-auto p-8 flex items-start justify-center bg-gray-900/50 relative print:bg-transparent print:p-0 print:block">
         {isThemeLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 text-white text-lg z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-800 bg-opacity-75 text-white text-lg z-10 print:hidden">
             Loading {selectedJsonResumeTheme} theme...
           </div>
         )}
@@ -118,23 +118,37 @@ export const ResumeCanvas = () => {
     return isVisible && isRegistered
   })
 
+  // Helper to check if TipTap content has actual text
+  const hasTextContent = (content: any): boolean => {
+    if (!content) return false
+    if (typeof content === 'string') return content.trim().length > 0
+    if (content.type === 'text' && content.text) return content.text.trim().length > 0
+    if (Array.isArray(content.content)) {
+      return content.content.some((node: any) => hasTextContent(node))
+    }
+    if (Array.isArray(content)) {
+      return content.some((node: any) => hasTextContent(node))
+    }
+    return false
+  }
+
   // Check if a section has content
   const sectionHasContent = (sectionId: string): boolean => {
     const data = resumeData as any
 
     switch (sectionId) {
       case 'contact':
-        return !!(data.contact && (data.contact.firstName || data.contact.lastName || data.contact.email))
+        return !!(data.contact && (data.contact.name || data.contact.firstName || data.contact.lastName || data.contact.email))
       case 'targetTitle':
         return !!(data.targetTitle)
       case 'summary':
-        return !!(data.summary && data.summary.content)
+        return !!(data.summary && hasTextContent(data.summary))
       case 'experience':
         return !!(data.experience && data.experience.length > 0)
       case 'education':
         return !!(data.education && data.education.length > 0)
       case 'skills':
-        return !!(data.skills && (data.skills.technical?.length > 0 || data.skills.soft?.length > 0 || data.skills.other?.length > 0))
+        return !!(data.skills && (data.skills.technical?.length > 0 || data.skills.tools?.length > 0 || data.skills.languages?.length > 0))
       case 'projects':
         return !!(data.projects && data.projects.length > 0)
       case 'certifications':
@@ -187,7 +201,7 @@ export const ResumeCanvas = () => {
   const hasBodyContent = sectionsWithContent.some(id => !headerSections.includes(id))
 
   return (
-    <div className="flex-1 h-full overflow-y-auto p-8 flex items-start justify-center bg-gray-900/50">
+    <div className="flex-1 h-full overflow-y-auto p-8 flex items-start justify-center bg-gray-900/50 print:bg-transparent print:p-0 print:block">
       <ResumePaper>
         {/* Render header sections */}
         {headerContent.map((sectionId, index) => (
