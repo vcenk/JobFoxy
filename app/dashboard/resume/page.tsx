@@ -47,6 +47,8 @@ interface Resume {
   created_at: string
 }
 
+type ViewMode = 'grid' | 'list'
+
 export default function ResumeLibraryPage() {
   const router = useRouter()
   const { user } = useAuthStore()
@@ -55,6 +57,7 @@ export default function ResumeLibraryPage() {
   const [showImportModal, setShowImportModal] = useState(false)
   const [showLinkedInModal, setShowLinkedInModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [viewMode, setViewMode] = useState<ViewMode>('list')
 
   useEffect(() => {
     if (user) {
@@ -206,42 +209,161 @@ export default function ResumeLibraryPage() {
 
             {/* View Toggles */}
             <div className="flex items-center space-x-1">
-              <button className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-white/70 transition-colors">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-lg border transition-colors ${
+                  viewMode === 'grid'
+                    ? 'bg-purple-500 border-purple-500 text-white'
+                    : 'border-white/10 hover:bg-white/5 text-white/70'
+                }`}
+              >
                 <LayoutGrid className="w-4 h-4" />
               </button>
-              <button className="p-2 rounded-lg border border-white/10 hover:bg-white/5 text-white/70 transition-colors">
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-lg border transition-colors ${
+                  viewMode === 'list'
+                    ? 'bg-purple-500 border-purple-500 text-white'
+                    : 'border-white/10 hover:bg-white/5 text-white/70'
+                }`}
+              >
                 <ListFilter className="w-4 h-4" />
               </button>
             </div>
           </div>
         </div>
 
-        {/* Resumes Table */}
-        <div className="glass-panel overflow-hidden rounded-xl border border-white/10">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-800 text-white text-sm uppercase tracking-wider border-b border-white/10">
-                  <th className="px-6 py-4 font-semibold">Resume</th>
-                  <th className="px-6 py-4 font-semibold w-32">ATS Score</th>
-                  <th className="px-6 py-4 font-semibold">Matched Job</th>
-                  <th className="px-6 py-4 font-semibold w-32">Match Score</th>
-                  <th className="px-6 py-4 font-semibold w-40">Created</th>
-                  <th className="px-6 py-4 font-semibold w-40">Last Edited</th>
-                  <th className="px-4 py-4 font-semibold w-16 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {filteredResumes.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-6 py-12 text-center text-white/40">
-                      No resumes found matching your search.
-                    </td>
+        {/* Resumes Display */}
+        {filteredResumes.length === 0 ? (
+          <div className="glass-panel p-12 text-center rounded-xl border border-white/10">
+            <p className="text-white/40">No resumes found matching your search.</p>
+          </div>
+        ) : viewMode === 'grid' ? (
+          /* Grid View */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredResumes.map((resume) => (
+              <div
+                key={resume.id}
+                className="glass-panel p-6 rounded-xl border border-white/10 hover:scale-[1.02] transition-all group cursor-pointer"
+                onClick={() => router.push(`/dashboard/resume/${resume.id}`)}
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-400" />
+                    {resume.is_base_version && (
+                      <Star className="w-4 h-4 text-yellow-400 fill-yellow-400/20" />
+                    )}
+                  </div>
+                  <DropdownMenu.Root>
+                    <DropdownMenu.Trigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="p-1.5 rounded-md hover:bg-white/10 text-white/50 hover:text-white transition-colors outline-none"
+                      >
+                        <MoreHorizontal className="w-5 h-5" />
+                      </button>
+                    </DropdownMenu.Trigger>
+                    <DropdownMenu.Portal>
+                      <DropdownMenu.Content
+                        className="min-w-[160px] bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl p-1 z-50 animate-in fade-in zoom-in-95 duration-200"
+                        sideOffset={5}
+                        align="end"
+                      >
+                        <DropdownMenu.Item
+                          className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            router.push(`/dashboard/resume/${resume.id}`)
+                          }}
+                        >
+                          <Pencil className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
+                          Edit
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                          className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDuplicateResume(resume.id)
+                          }}
+                        >
+                          <Copy className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
+                          Duplicate
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Separator className="h-px bg-white/10 my-1" />
+                        <DropdownMenu.Item
+                          className="group flex items-center px-2 py-2 text-sm text-red-400 outline-none cursor-pointer hover:bg-red-500/10 hover:text-red-300 rounded-md transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteResume(resume.id)
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </DropdownMenu.Item>
+                      </DropdownMenu.Content>
+                    </DropdownMenu.Portal>
+                  </DropdownMenu.Root>
+                </div>
+
+                {/* Title */}
+                <h3 className="text-lg font-bold text-white mb-3 group-hover:text-purple-300 transition-colors">
+                  {resume.title}
+                </h3>
+
+                {/* Scores */}
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white/60">ATS Score</span>
+                    <ScoreBadge score={resume.ats_score} size="sm" />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-white/60">Match Score</span>
+                    <ScoreBadge score={resume.jd_match_score} size="sm" />
+                  </div>
+                </div>
+
+                {/* Job Info */}
+                {resume.job_description && (
+                  <div className="mb-4 p-3 bg-white/5 rounded-lg border border-white/10">
+                    <div className="text-xs text-white/50 mb-1">Matched Job</div>
+                    <div className="text-sm text-white font-medium">{resume.job_description.title}</div>
+                    {resume.job_description.company && (
+                      <div className="text-xs text-white/60">{resume.job_description.company}</div>
+                    )}
+                  </div>
+                )}
+
+                {/* Dates */}
+                <div className="flex items-center justify-between text-xs text-white/50 pt-3 border-t border-white/10">
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {new Date(resume.updated_at).toLocaleDateString()}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* List View (Table) */
+          <div className="glass-panel overflow-hidden rounded-xl border border-white/10">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-gray-800 text-white text-sm uppercase tracking-wider border-b border-white/10">
+                    <th className="px-6 py-4 font-semibold">Resume</th>
+                    <th className="px-6 py-4 font-semibold w-32">ATS Score</th>
+                    <th className="px-6 py-4 font-semibold">Matched Job</th>
+                    <th className="px-6 py-4 font-semibold w-32">Match Score</th>
+                    <th className="px-6 py-4 font-semibold w-40">Created</th>
+                    <th className="px-6 py-4 font-semibold w-40">Last Edited</th>
+                    <th className="px-4 py-4 font-semibold w-16 text-center">Actions</th>
                   </tr>
-                ) : (
-                  filteredResumes.map((resume) => (
-                    <tr 
-                      key={resume.id} 
+                </thead>
+                <tbody className="divide-y divide-white/5">
+                  {filteredResumes.map((resume) => (
+                    <tr
+                      key={resume.id}
                       className="hover:bg-white/5 transition-colors group"
                     >
                       {/* Resume Name */}
@@ -250,7 +372,7 @@ export default function ResumeLibraryPage() {
                           {resume.is_base_version && (
                             <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400/20" />
                           )}
-                          <button 
+                          <button
                             onClick={() => router.push(`/dashboard/resume/${resume.id}`)}
                             className="text-white font-medium hover:text-purple-400 transition-colors flex items-center gap-1 group/link"
                           >
@@ -323,9 +445,9 @@ export default function ResumeLibraryPage() {
                                 <Copy className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
                                 Duplicate
                               </DropdownMenu.Item>
-                              
+
                               <DropdownMenu.Separator className="h-px bg-white/10 my-1" />
-                              
+
                               <DropdownMenu.Item
                                 className="group flex items-center px-2 py-2 text-sm text-red-400 outline-none cursor-pointer hover:bg-red-500/10 hover:text-red-300 rounded-md transition-colors"
                                 onClick={() => handleDeleteResume(resume.id)}
@@ -338,12 +460,12 @@ export default function ResumeLibraryPage() {
                         </DropdownMenu.Root>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Import Modal */}
