@@ -1,28 +1,39 @@
 // components/resume/analysis/JobAnalysisView.tsx
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ArrowRight, Loader2, Target, FileText, Check, AlertCircle, Download } from 'lucide-react'
 import { AnalysisDashboard, AnalysisData } from './AnalysisDashboard'
 import { ResumeAnalysisResult } from '@/lib/types/analysis'
+import { UpgradeModal } from '@/components/ui/UpgradeModal'
+import { getAvailableIndustries } from '@/lib/data/atsKeywords'
+
+export interface JobAnalysisViewRef {
+  handleExportReport: () => Promise<void>
+}
 
 interface JobAnalysisViewProps {
   resumeId: string
   currentResumeText?: string // Optional context for display
 }
 
-export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisViewProps) {
+export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewProps>(({ resumeId, currentResumeText }, ref) => {
   const router = useRouter()
   const [jobTitle, setJobTitle] = useState('')
   const [company, setCompany] = useState('')
   const [jobDescription, setJobDescription] = useState('')
+  const [industry, setIndustry] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(true)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
+  // Get available industries for dropdown
+  const availableIndustries = getAvailableIndustries()
 
   // Load existing analysis results on mount
   useEffect(() => {
@@ -56,6 +67,9 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
               missing_keywords: results.missing_keywords || [],
               ats_warnings: results.ats_warnings || [],
               ats_good_practices: results.ats_good_practices || [],
+              power_words: results.power_words,
+              quantification: results.quantification,
+              keyword_coverage: results.keyword_coverage,
               keyword_analysis: results.keyword_analysis || { missing: [], present: [] },
               weaknesses: results.weaknesses || [],
               strengths: results.strengths || [],
@@ -70,10 +84,10 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
             const jdResponse = await fetch(`/api/job-description/${data.resume.job_description_id}`)
             const jdData = await jdResponse.json()
 
-            if (jdData.success && jdData.jobDescription) {
-              setJobTitle(jdData.jobDescription.title || '')
-              setCompany(jdData.jobDescription.company || '')
-              setJobDescription(jdData.jobDescription.description || '')
+            if (jdData.success && jdData.data?.jobDescription) {
+              setJobTitle(jdData.data.jobDescription.title || '')
+              setCompany(jdData.data.jobDescription.company || '')
+              setJobDescription(jdData.data.jobDescription.description || '')
             }
           }
         }
@@ -109,11 +123,22 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
           jobTitle: jobTitle.trim(),
           jobCompany: company.trim() || null,
           jobText: jobDescription.trim(),
-          createTailoredVersion: true, // Always create a new tailored version for each job analysis
+          industry: industry || null,
+          createTailoredVersion: true, // Create tailored resume and redirect to it
         }),
       })
 
       if (!response.ok) {
+        // Handle Limit Reached
+        if (response.status === 403) {
+          const data = await response.json()
+          if (data.code === 'LIMIT_REACHED') {
+            setShowUpgradeModal(true)
+            setAnalyzing(false)
+            return
+          }
+        }
+
         let errorMessage = `Analysis failed with status ${response.status}`
         try {
           const data = await response.json()
@@ -170,6 +195,11 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
             // ATS warnings and good practices
             ats_warnings: result.ats_warnings || [],
             ats_good_practices: result.ats_good_practices || [],
+
+            // Phase 1: Power Words & ATS Optimization
+            power_words: result.power_words,
+            quantification: result.quantification,
+            keyword_coverage: result.keyword_coverage,
 
             // Original fields
             keyword_analysis: result.keyword_analysis || { missing: [], present: [] },
@@ -269,7 +299,10 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
       if (analysisResult.coaching_summary) {
         addText('OVERALL ASSESSMENT', 14, true, [106, 71, 255])
         addSpace(5)
-        addText(analysisResult.coaching_summary, 10, false)
+        const summary = typeof analysisResult.coaching_summary === 'string'
+          ? analysisResult.coaching_summary
+          : analysisResult.coaching_summary.insight
+        addText(summary, 10, false)
         addSpace(10)
       }
 
@@ -416,9 +449,19 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
     }
   }
 
+  // Expose handler to parent
+  useImperativeHandle(ref, () => ({
+    handleExportReport
+  }))
+
   const handleOptimizeResume = async () => {
-    if (!jobTitle.trim() || !jobDescription.trim()) {
-      setError('Job information is missing. Please analyze first.')
+    if (!jobTitle.trim()) {
+      setError('Job title is missing. Please run a new analysis with job details first.')
+      return
+    }
+
+    if (!jobDescription.trim()) {
+      setError('Job description is missing. Please run a new analysis with job details first.')
       return
     }
 
@@ -434,6 +477,7 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
           jobTitle: jobTitle.trim(),
           jobCompany: company.trim() || null,
           jobText: jobDescription.trim(),
+          industry: industry || null,
           createTailoredVersion: true, // Create optimized version
         }),
       })
@@ -512,6 +556,7 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
                 setJobTitle('')
                 setCompany('')
                 setJobDescription('')
+                setIndustry('')
               }}
               className="text-sm text-purple-300 hover:text-white transition-colors"
             >
@@ -530,7 +575,7 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
         <AnalysisDashboard
           data={analysisResult}
           onFixIssue={() => {}}
-          onOptimizeResume={handleOptimizeResume}
+          onOptimizeResume={jobTitle && jobDescription ? handleOptimizeResume : undefined}
           isOptimizing={optimizing}
         />
       </div>
@@ -581,6 +626,33 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
           </div>
         </div>
 
+        {/* Industry Selector */}
+        <div>
+          <label className="block text-sm font-medium text-white/80 mb-2">
+            Target Industry <span className="text-white/40 text-xs">(Optional - for ATS keyword optimization)</span>
+          </label>
+          <select
+            value={industry}
+            onChange={(e) => setIndustry(e.target.value)}
+            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' opacity='0.5' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 1rem center',
+            }}
+          >
+            <option value="" className="bg-gray-900">Select an industry...</option>
+            {availableIndustries.map((ind) => (
+              <option key={ind} value={ind} className="bg-gray-900">
+                {ind.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-white/40 mt-1.5">
+            Selecting an industry enables keyword coverage analysis specific to your field
+          </p>
+        </div>
+
         {/* Job Description */}
         <div className="flex flex-col">
           <label className="block text-sm font-medium text-white/80 mb-2">
@@ -612,20 +684,55 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
           </motion.div>
         )}
 
-        <button
+        <motion.button
           onClick={handleAnalyze}
           disabled={analyzing || !jobTitle.trim() || !jobDescription.trim()}
+          animate={analyzing ? {
+            scale: [1, 1.02, 1],
+            boxShadow: [
+              '0 0 20px rgba(168, 85, 247, 0.4)',
+              '0 0 40px rgba(168, 85, 247, 0.6)',
+              '0 0 20px rgba(168, 85, 247, 0.4)',
+            ]
+          } : {}}
+          transition={{
+            duration: 2,
+            repeat: analyzing ? Infinity : 0,
+            ease: "easeInOut"
+          }}
           className={`
-            w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 transition-all
-            ${analyzing || !jobTitle.trim() || !jobDescription.trim()
+            w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 transition-all relative overflow-hidden
+            ${analyzing
+              ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 text-white cursor-wait bg-[length:200%_100%] animate-gradient'
+              : !jobTitle.trim() || !jobDescription.trim()
               ? 'bg-white/5 text-white/30 cursor-not-allowed'
               : 'glow-button text-white hover:scale-[1.01] active:scale-[0.99]'}
           `}
         >
+          {analyzing && (
+            <motion.div
+              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+              animate={{
+                x: ['-100%', '100%']
+              }}
+              transition={{
+                duration: 1.5,
+                repeat: Infinity,
+                ease: "linear"
+              }}
+            />
+          )}
           {analyzing ? (
             <>
               <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              Analyzing Match...
+              <span className="relative z-10">Analyzing Resume</span>
+              <motion.span
+                className="relative z-10"
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                ...
+              </motion.span>
             </>
           ) : (
             <>
@@ -633,7 +740,7 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
               <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
             </>
           )}
-        </button>
+        </motion.button>
 
         {/* Info Footer */}
         <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 text-center text-white/40 text-xs sm:text-sm">
@@ -652,6 +759,14 @@ export function JobAnalysisView({ resumeId, currentResumeText }: JobAnalysisView
         </div>
         </div>
       </div>
+
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="AI Job Analysis"
+      />
     </div>
   )
-}
+})
+
+JobAnalysisView.displayName = 'JobAnalysisView'

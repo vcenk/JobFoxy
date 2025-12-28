@@ -26,8 +26,8 @@ export interface ResumeAnalysisResult {
     communication?: string
     soft_skills?: string
   }
-  strength_highlights?: string[]              // Detailed strength explanations
-  coaching_summary?: string                   // Comprehensive coaching summary
+  strength_highlights?: (string | { title: string; source: string; insight: string })[]  // Detailed strength explanations
+  coaching_summary?: string | { title: string; source: string; insight: string }        // Comprehensive coaching summary
   bullet_improvements?: Array<{               // Before/After bullet examples
     before: string
     after: string
@@ -43,6 +43,29 @@ export interface ResumeAnalysisResult {
   // ATS-specific checks
   ats_warnings: ATSWarning[]       // Severity-based warnings with recommendations
   ats_good_practices: string[]     // What candidate is doing right
+
+  // Phase 1: Power Words & ATS Optimization
+  power_words?: {
+    score: number
+    weakWords: string[]
+    suggestions: Array<{ weak: string; alternatives: string[] }>
+    totalWeakWordsFound: number
+    improvementPotential: 'low' | 'medium' | 'high'
+  }
+  quantification?: {
+    hasMetrics: boolean
+    score: number
+    metricTypes: string[]
+    suggestions: string[]
+  }
+  keyword_coverage?: {
+    coverage: number
+    matched: string[]
+    missing: string[]
+    mustHaveMissing: string[]
+    industry: string | null
+    suggestions: string[]
+  } | null
 
   // Skills analysis
   skill_matches: string[]

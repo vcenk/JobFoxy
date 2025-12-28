@@ -1,9 +1,10 @@
 // app/api/resume/analyze/route.ts
 // Analyze resume against ATS or job description
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import {
   analyzeResumeATS,
+  analyzeResumeATSEnhanced,
   analyzeResumeAgainstJob,
 } from '@/lib/engines/resumeAnalysisEngine'  // lib/engines/resumeAnalysisEngine.ts
 import { supabaseAdmin } from '@/lib/clients/supabaseClient'  // lib/clients/supabaseClient.ts
@@ -15,6 +16,8 @@ import {
   successResponse,
   validateRequiredFields,
   trackUsage,
+  checkUsageLimits,
+  incrementUsage,
 } from '@/lib/utils/apiHelpers'  // lib/utils/apiHelpers.ts
 
 export async function POST(req: NextRequest) {
@@ -22,6 +25,15 @@ export async function POST(req: NextRequest) {
   const user = await getAuthUser(req)
   if (!user) {
     return unauthorizedResponse()
+  }
+
+  // Check usage limits
+  const limitCheck = await checkUsageLimits(user.id, 'job_analysis')
+  if (!limitCheck.allowed) {
+    return NextResponse.json(
+      { success: false, error: limitCheck.reason, code: 'LIMIT_REACHED' },
+      { status: 403 }
+    )
   }
 
   try {
@@ -33,7 +45,7 @@ export async function POST(req: NextRequest) {
       return badRequestResponse(`Missing fields: ${validation.missing?.join(', ')}`)
     }
 
-    const { resumeId, jobDescriptionId, jobText: rawJobText, jobTitle, jobCompany, createTailoredVersion = false } = body
+    const { resumeId, jobDescriptionId, jobText: rawJobText, jobTitle, jobCompany, createTailoredVersion = false, industry } = body
 
     // Get resume
     const { data: resume } = await supabaseAdmin
@@ -161,7 +173,10 @@ export async function POST(req: NextRequest) {
             resumeText: resumeTextToAnalyze,
             jobText,
           })
-        : await analyzeResumeATS(resumeTextToAnalyze)
+        : await analyzeResumeATSEnhanced(resumeTextToAnalyze, {
+            industry,
+            includeAISuggestions: true
+          })
     } catch (analysisError: any) {
       console.error('[Resume Analysis Error]:', analysisError)
       return serverErrorResponse(analysisError.message || 'Failed to analyze resume')
@@ -241,6 +256,24 @@ export async function POST(req: NextRequest) {
         .eq('id', resumeId)
     }
 
+    // Save to analysis_results table for historical tracking
+    const { error: analysisInsertError } = await supabaseAdmin
+      .from('analysis_results')
+      .insert({
+        user_id: user.id,
+        resume_id: targetResumeId,
+        job_description_id: actualJobDescriptionId || null,
+        ats_score: analysis.ats_score,
+        jd_match_score: analysis.jd_match_score || 0,
+        skills_fit_score: analysis.skills_fit_score || 0,
+        analysis_data: analysis,
+      })
+
+    if (analysisInsertError) {
+      console.error('[Analysis Results Save Error]:', analysisInsertError)
+      // Don't fail the whole request, just log the error
+    }
+
     // Track usage
     await trackUsage({
       userId: user.id,
@@ -253,6 +286,9 @@ export async function POST(req: NextRequest) {
         jobCompany: jobCompany || null,
       },
     })
+
+    // Increment monthly counter
+    await incrementUsage(user.id, 'job_analyses_this_month')
 
     return successResponse({
       ...analysis,
