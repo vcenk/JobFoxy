@@ -21,6 +21,7 @@ export const ResumeCanvas = () => {
     renderedThemeHtml,
     isThemeLoading,
     resumeData,
+    designerSettings,
     setIsThemeLoading,
     setRenderedThemeHtml,
   } = useResume()

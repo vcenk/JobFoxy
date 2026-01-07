@@ -36,7 +36,7 @@ export function Footer({
   productLinks = defaultProductLinks,
   legalLinks = defaultLegalLinks,
   socialLinks = defaultSocialLinks,
-  copyright = `© ${new Date().getFullYear()} EchoMind AI. All rights reserved.`
+  copyright = `© ${new Date().getFullYear()} Job Foxy AI. All rights reserved.`
 }: FooterProps) {
   return (
     // CHANGED: Matched background to #f4f7fa for consistency
@@ -54,7 +54,7 @@ export function Footer({
                     <path d="M12 12c0-2.21 1.79-4 4-4s4 1.79 4 4v8c0 2.21-1.79 4-4 4s-4-1.79-4-4v-8z" fill="currentColor" fillOpacity="0.5"/>
                  </svg>
               </div>
-              <span className="text-xl font-bold text-[#1a1615] tracking-tight">EchoMind</span>
+              <span className="text-xl font-bold text-[#1a1615] tracking-tight">Job Foxy</span>
             </Link>
             
             <p className="text-[#6b6b6b] text-sm leading-relaxed mb-6 max-w-xs">
@@ -142,13 +142,13 @@ export function Footer({
         </div>
 
         {/* BOTTOM BAR */}
-        <div className="pt-8 border-t border-black/[0.04] flex flex-col md:flex-row justify-between items-center gap-4">
+        <div className="pt-8 border-t border-black/[0.04] flex flex-col md:flex-row justify-between items-center gap-4 relative z-10">
           <p className="text-sm text-[#9ca3af] font-medium">
             {copyright}
           </p>
           <div className="flex items-center gap-6">
              <span className="text-xs font-bold text-gray-300 uppercase tracking-widest select-none">
-                ECHOMIND
+                INTERVIEW INTELLIGENCE
              </span>
           </div>
         </div>

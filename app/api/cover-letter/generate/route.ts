@@ -4,6 +4,7 @@
 import { NextRequest } from 'next/server'
 import { generateCoverLetter } from '@/lib/engines/coverLetterEngine'
 import { supabaseAdmin } from '@/lib/clients/supabaseClient'
+import { jsonToPlainText } from '@/lib/utils/richTextHelpers'
 import {
   getAuthUser,
   unauthorizedResponse,
@@ -65,7 +66,11 @@ export async function POST(req: NextRequest) {
           // Summary
           if (content.summary) {
             sections.push('\nSUMMARY')
-            sections.push(content.summary)
+            // Handle both string and JSONContent
+            const summaryText = typeof content.summary === 'string'
+              ? content.summary
+              : jsonToPlainText(content.summary)
+            sections.push(summaryText)
           }
 
           // Experience
@@ -75,7 +80,13 @@ export async function POST(req: NextRequest) {
               sections.push(`${exp.title || ''} at ${exp.company || ''}`)
               sections.push(`${exp.date || ''}`)
               if (exp.bullets && Array.isArray(exp.bullets)) {
-                exp.bullets.forEach((bullet: string) => sections.push(`• ${bullet}`))
+                exp.bullets.forEach((bullet: any) => {
+                  // Handle both string and JSONContent bullets
+                  const bulletText = typeof bullet === 'string'
+                    ? bullet
+                    : jsonToPlainText(bullet)
+                  sections.push(`• ${bulletText}`)
+                })
               }
             })
           }
@@ -126,25 +137,85 @@ export async function POST(req: NextRequest) {
       return serverErrorResponse('Cover letter generation returned empty results.')
     }
 
-    // Save cover letter to database
-    const { data: coverLetter, error: saveError } = await supabaseAdmin
-      .from('cover_letters')
-      .insert({
-        user_id: user.id,
-        resume_id: resumeId,
-        title: `Cover Letter - ${jobTitle}${companyName ? ` @ ${companyName}` : ''}`,
-        content: coverLetterContent,
-        company_name: companyName || null,
-        position_title: jobTitle,
-        tone,
-      })
-      .select()
-      .single()
+    // Check if cover letter with this tone already exists for this resume
+    console.log('[Cover Letter Generate] Checking for existing cover letter:', {
+      userId: user.id,
+      resumeId,
+      tone
+    })
 
-    if (saveError) {
-      console.error('[Cover Letter Save Error]:', saveError)
-      return serverErrorResponse('Failed to save cover letter')
+    const { data: existingCoverLetters } = await supabaseAdmin
+      .from('cover_letters')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .eq('tone', tone)
+
+    let coverLetter
+
+    if (existingCoverLetters && existingCoverLetters.length > 0) {
+      // Update existing cover letter for this tone
+      const existingId = existingCoverLetters[0].id
+      console.log('[Cover Letter Generate] Updating existing cover letter:', existingId)
+
+      const { data: updatedLetter, error: updateError } = await supabaseAdmin
+        .from('cover_letters')
+        .update({
+          title: `Cover Letter - ${jobTitle}${companyName ? ` @ ${companyName}` : ''}`,
+          content: coverLetterContent,
+          company_name: companyName || null,
+          position_title: jobTitle,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingId)
+        .select()
+        .single()
+
+      if (updateError) {
+        console.error('[Cover Letter Update Error]:', updateError)
+        return serverErrorResponse('Failed to update cover letter')
+      }
+
+      coverLetter = updatedLetter
+      console.log('[Cover Letter Generate] ✅ Updated existing cover letter')
+    } else {
+      // Create new cover letter for this tone
+      console.log('[Cover Letter Generate] Creating new cover letter for tone:', tone)
+
+      const { data: newLetter, error: insertError } = await supabaseAdmin
+        .from('cover_letters')
+        .insert({
+          user_id: user.id,
+          resume_id: resumeId,
+          title: `Cover Letter - ${jobTitle}${companyName ? ` @ ${companyName}` : ''}`,
+          content: coverLetterContent,
+          company_name: companyName || null,
+          position_title: jobTitle,
+          tone,
+        })
+        .select()
+        .single()
+
+      if (insertError) {
+        console.error('[Cover Letter Insert Error]:', insertError)
+        console.error('[Cover Letter Insert Error Details]:', {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code
+        })
+        return serverErrorResponse('Failed to save cover letter')
+      }
+
+      coverLetter = newLetter
+      console.log('[Cover Letter Generate] ✅ Created new cover letter')
     }
+
+    console.log('[Cover Letter Generate] Successfully saved:', {
+      id: coverLetter.id,
+      resumeId: coverLetter.resume_id,
+      tone: coverLetter.tone
+    })
 
     // Track usage
     await trackUsage({

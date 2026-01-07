@@ -10,14 +10,15 @@ import Link from 'next/link'
 interface SessionCardProps {
   session: {
     id: string
-    session_type: string
-    difficulty_level: string
+    title: string
+    question_category: string
     status: string
-    overall_score: number | null
+    average_score: number | null
     total_questions: number
-    questions_answered: number
+    completed_questions: number
     created_at: string
-    duration_minutes?: number
+    started_at?: string
+    completed_at?: string
   }
   onDelete?: (id: string) => void
   viewMode?: 'grid' | 'list'
@@ -76,26 +77,26 @@ export function SessionCard({ session, onDelete, viewMode = 'grid' }: SessionCar
         <div className="grid grid-cols-12 gap-4 items-center">
           {/* Session Name */}
           <div className="col-span-3">
-            <h3 className="text-white font-medium capitalize">{session.session_type}</h3>
-            <p className="text-xs text-white/50 capitalize">{session.difficulty_level}</p>
+            <h3 className="text-white font-medium">{session.title}</h3>
+            <p className="text-xs text-white/50 capitalize">{session.question_category}</p>
           </div>
 
           {/* Questions */}
           <div className="col-span-2 text-center">
             <p className="text-white/70">
-              {session.questions_answered} / {session.total_questions}
+              {session.completed_questions} / {session.total_questions}
             </p>
           </div>
 
           {/* Score */}
           <div className="col-span-2">
-            {session.overall_score !== null ? (
+            {session.average_score !== null ? (
               <div
                 className={`inline-flex items-center gap-2 px-3 py-1 rounded-full border ${getScoreBadgeColor(
-                  session.overall_score
+                  session.average_score
                 )}`}
               >
-                <span className="font-bold">{Math.round(session.overall_score)}</span>
+                <span className="font-bold">{Math.round(session.average_score)}</span>
               </div>
             ) : (
               <span className="text-white/50 text-sm">N/A</span>
@@ -104,10 +105,10 @@ export function SessionCard({ session, onDelete, viewMode = 'grid' }: SessionCar
 
           {/* Duration */}
           <div className="col-span-2">
-            {session.duration_minutes ? (
+            {session.started_at && session.completed_at ? (
               <p className="text-white/70 text-sm flex items-center gap-1">
                 <Clock className="w-4 h-4" />
-                {session.duration_minutes}m
+                {Math.round((new Date(session.completed_at).getTime() - new Date(session.started_at).getTime()) / 60000)}m
               </p>
             ) : (
               <span className="text-white/50 text-sm">-</span>
@@ -154,10 +155,10 @@ export function SessionCard({ session, onDelete, viewMode = 'grid' }: SessionCar
       className="glass-panel p-6 relative overflow-hidden group"
     >
       {/* Background gradient on hover */}
-      {session.overall_score !== null && (
+      {session.average_score !== null && (
         <div
           className={`absolute inset-0 bg-gradient-to-br ${getScoreColor(
-            session.overall_score
+            session.average_score
           )} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
         />
       )}
@@ -166,8 +167,8 @@ export function SessionCard({ session, onDelete, viewMode = 'grid' }: SessionCar
         {/* Header */}
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1">
-            <h3 className="text-lg font-bold text-white capitalize mb-1">{session.session_type}</h3>
-            <p className="text-sm text-white/50 capitalize">{session.difficulty_level}</p>
+            <h3 className="text-lg font-bold text-white mb-1">{session.title}</h3>
+            <p className="text-sm text-white/50 capitalize">{session.question_category}</p>
           </div>
           <div className={`flex items-center gap-1 px-2 py-1 rounded-full border text-xs ${statusInfo.color}`}>
             <StatusIcon className="w-3 h-3" />
@@ -180,21 +181,21 @@ export function SessionCard({ session, onDelete, viewMode = 'grid' }: SessionCar
           <div className="flex items-center justify-between text-sm">
             <span className="text-white/60">Questions</span>
             <span className="text-white font-medium">
-              {session.questions_answered} / {session.total_questions}
+              {session.completed_questions} / {session.total_questions}
             </span>
           </div>
 
-          {session.overall_score !== null && (
+          {session.average_score !== null && (
             <div>
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-white/60">Score</span>
-                <span className="text-white font-bold">{Math.round(session.overall_score)}/100</span>
+                <span className="text-white font-bold">{Math.round(session.average_score)}/100</span>
               </div>
               <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
                 <motion.div
-                  className={`h-full bg-gradient-to-r ${getScoreColor(session.overall_score)}`}
+                  className={`h-full bg-gradient-to-r ${getScoreColor(session.average_score)}`}
                   initial={{ width: 0 }}
-                  animate={{ width: `${session.overall_score}%` }}
+                  animate={{ width: `${session.average_score}%` }}
                   transition={{ duration: 0.8, ease: 'easeOut' }}
                 />
               </div>

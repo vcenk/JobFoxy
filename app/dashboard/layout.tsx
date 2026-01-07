@@ -8,7 +8,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuthStore } from '@/store/authStore'
-import { FileText, MessageSquare, User, Home, LogOut, Mic } from 'lucide-react'
+import { FileText, MessageSquare, User, Home, LogOut, Mic, Video } from 'lucide-react'
 import JobFoxyLogo from '@/components/assets/JobFoxyDark.svg'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -17,8 +17,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const { user, profile, signOut, initialize } = useAuthStore()
   const [loading, setLoading] = useState(true)
 
-  // 1. ADDED: Check if we are inside the Resume Builder
+  // 1. ADDED: Check if we are inside the Resume Builder or Account Page
   const isResumePage = pathname?.startsWith('/dashboard/resume')
+  const isPracticePage = pathname?.startsWith('/dashboard/practice')
+  const isCoachingPage = pathname?.startsWith('/dashboard/coaching')
 
   useEffect(() => {
     initialize().finally(() => setLoading(false))
@@ -41,8 +43,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const dockItems = [
     { name: 'Home', href: '/dashboard', icon: Home },
     { name: 'Resume', href: '/dashboard/resume', icon: FileText },
-    { name: 'Practice', href: '/dashboard/practice', icon: Mic },
     { name: 'Coaching', href: '/dashboard/coaching', icon: MessageSquare },
+    { name: 'Practice', href: '/dashboard/practice', icon: Mic },
+    { name: 'Mock Interview', href: '/dashboard/mock', icon: Video },
     { name: 'Account', href: '/dashboard/account', icon: User },
   ]
 
@@ -62,9 +65,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       {/* Top Bar - Glass Effect with Navigation */}
       <header className="fixed top-0 left-0 right-0 z-40 px-8 py-0.5">
         {/* 2. UPDATED: Conditional max-width based on isResumePage */}
-        <div className={`glass-panel mx-auto px-6 py-0.5 transition-all duration-300 ${
-          isResumePage ? 'max-w-[80%]' : 'max-w-7xl'
-        }`}>
+        <div className={`glass-panel mx-auto px-6 py-0.5 transition-all duration-300 ${isResumePage ? 'max-w-[80%]' : 'max-w-full'
+          }`}>
           <div className="flex items-center justify-between">
             {/* Logo */}
             <Link href="/dashboard" className="flex items-center space-x-3 group">
@@ -73,6 +75,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   src={JobFoxyLogo}
                   alt="Job Foxy"
                   fill
+                  priority
                   className="object-contain"
                 />
               </div>
@@ -83,7 +86,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {dockItems.map((item) => {
                 const Icon = item.icon
                 const isActive = pathname === item.href ||
-                               (item.href !== '/dashboard' && pathname.startsWith(item.href))
+                  (item.href !== '/dashboard' && pathname.startsWith(item.href))
 
                 return (
                   <Link
@@ -128,22 +131,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               {/* Subscription Badge */}
               {profile && (
                 <div className="glass-panel px-4 py-2">
-                  <span className={`text-lg font-semibold ${
-                    profile.subscription_status === 'active' || profile.subscription_status === 'trialing'
-                      ? 'text-purple-300'
-                      : 'text-white/70'
-                  }`}>
+                  <span className={`text-lg font-semibold ${profile.subscription_status === 'active' || profile.subscription_status === 'trialing'
+                    ? 'text-purple-300'
+                    : 'text-white/70'
+                    }`}>
                     {profile.subscription_status === 'active' || profile.subscription_status === 'trialing' ? '✨ Pro' : 'Free'}
                   </span>
                 </div>
               )}
 
-              {/* User Avatar */}
-              <div className="glass-panel p-1">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {user?.email?.[0].toUpperCase() || 'U'}
-                </div>
-              </div>
+
 
               {/* Sign Out Button */}
               <button
@@ -160,9 +157,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Main Content */}
       {/* 3. UPDATED: Conditional max-width and padding based on isResumePage */}
-      <main className={`pt-28 mx-auto transition-all duration-300 ${
-        isResumePage ? 'max-w-[90%] px-4' : 'max-w-7xl px-8'
-      }`}>
+      <main className={`pt-28 mx-auto transition-all duration-300 ${isResumePage || isPracticePage || isCoachingPage ? 'max-w-[95%] px-4' : 'max-w-7xl px-8'
+        }`}>
         {children}
       </main>
     </div>

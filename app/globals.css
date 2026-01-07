@@ -263,6 +263,67 @@ body.dashboard-theme {
   position: relative;
   z-index: 100002 !important;
   background-color: white;
-  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.5); 
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.5);
   border-radius: 4px;
+}
+
+/* Resume Section Text Alignment */
+.resume-section-wrapper {
+  text-align: var(--section-text-align, left);
+}
+
+/* Keep section headings always left-aligned */
+.resume-section-wrapper h1,
+.resume-section-wrapper h2,
+.resume-section-wrapper h3,
+.resume-section-wrapper h4,
+.resume-section-wrapper h5,
+.resume-section-wrapper h6 {
+  text-align: left !important;
+}
+
+/* Analyzing Animation */
+@keyframes gradient-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient-shift 3s ease infinite;
+}
+
+/* ========================================
+   BLOG / PROSE CUSTOM STYLING
+   ======================================== */
+
+.blog-content ul {
+  list-style: none !important;
+  padding-left: 0 !important;
+}
+
+.blog-content ul > li {
+  position: relative;
+  padding-left: 1.75em !important;
+  margin-bottom: 0.75rem;
+}
+
+.blog-content ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 6px;
+  height: 6px;
+  background-color: #2563eb; /* Blue-600 */
+  border-radius: 50%;
+}
+
+.blog-content ol {
+  padding-left: 1.5em !important;
+}
+
+.blog-content ol > li {
+  margin-bottom: 0.75rem;
+  padding-left: 0.5em;
 }

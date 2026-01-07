@@ -3,7 +3,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/clients/supabaseClient'
-import { getAuthUser } from '@/lib/utils/apiHelpers'
+import { getAuthUser, checkUsageLimits, incrementUsage } from '@/lib/utils/apiHelpers'
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,6 +12,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
         { status: 401 }
+      )
+    }
+
+    // Check usage limits
+    const limitCheck = await checkUsageLimits(user.id, 'resume_build')
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        { success: false, error: limitCheck.reason, code: 'LIMIT_REACHED' },
+        { status: 403 }
       )
     }
 
@@ -47,6 +56,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       )
     }
+
+    // Increment usage counter on success
+    await incrementUsage(user.id, 'resume_builds_this_month')
 
     return NextResponse.json({
       success: true,

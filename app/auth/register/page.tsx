@@ -10,7 +10,7 @@ import { z } from 'zod'
 import { useAuthStore } from '@/store/authStore'
 import { AlertCircle, Loader2, AlertTriangle, ArrowRight, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import JobFoxyLogo from '@/components/assets/JobFoxy.svg'
+import JobFoxyLogo from '@/components/assets/JobFoxyDark.svg'
 
 // --- VALIDATION SCHEMA ---
 const registerSchema = z.object({
@@ -101,7 +101,7 @@ export default function RegisterPage() {
         
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-2">
-           <div className="w-14 h-14 relative">
+           <div className="w-36 h-36 relative">
               <Image 
                 src={JobFoxyLogo} 
                 alt="Job Foxy" 
@@ -109,7 +109,7 @@ export default function RegisterPage() {
                 className="object-contain" 
               />
            </div>
-           <span className="font-bold text-xl tracking-tight">Job Foxy</span>
+        
         </div>
 
         {/* Content */}

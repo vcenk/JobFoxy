@@ -65,6 +65,12 @@ Bullet to Rewrite: "${safeContent}"`
         targetFocusArea = 'skills'
         resumeText = safeContent
       }
+
+      // --- CASE D: WORK EXPERIENCE (BULK) ---
+      else if (section === 'work_experience') {
+        targetFocusArea = 'bullets'
+        resumeText = safeContent
+      }
       
       // --- FALLBACK ---
       else {

@@ -8,9 +8,9 @@ import { useState } from 'react'
 
 export const SkillsForm = () => {
   const { resumeData, setResumeData } = useResume()
-  const [newSkill, setNewSkill] = useState({ technical: '', tools: '', languages: '' })
+  const [newSkill, setNewSkill] = useState({ technical: '', soft: '', other: '' })
 
-  const addSkill = (category: 'technical' | 'tools' | 'languages') => {
+  const addSkill = (category: 'technical' | 'soft' | 'other') => {
     if (!newSkill[category].trim()) return
 
     const currentSkills = resumeData.skills[category] || []
@@ -24,7 +24,7 @@ export const SkillsForm = () => {
     setNewSkill({ ...newSkill, [category]: '' })
   }
 
-  const removeSkill = (category: 'technical' | 'tools' | 'languages', index: number) => {
+  const removeSkill = (category: 'technical' | 'soft' | 'other', index: number) => {
     const currentSkills = resumeData.skills[category] || []
     setResumeData({
       ...resumeData,
@@ -35,7 +35,7 @@ export const SkillsForm = () => {
     })
   }
 
-  const handleKeyPress = (e: React.KeyboardEvent, category: 'technical' | 'tools' | 'languages') => {
+  const handleKeyPress = (e: React.KeyboardEvent, category: 'technical' | 'soft' | 'other') => {
     if (e.key === 'Enter') {
       e.preventDefault()
       addSkill(category)
@@ -82,16 +82,16 @@ export const SkillsForm = () => {
         </div>
       </GlassCardSection>
 
-      <GlassCardSection title="Tools & Technologies">
+      <GlassCardSection title="Soft Skills">
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {(resumeData.skills.tools || []).map((tool, index) => (
+            {(resumeData.skills.soft || []).map((skill, index) => (
               <div
                 key={index}
                 className="flex items-center space-x-2 px-3 py-1.5 bg-blue-500/20 border border-blue-500/30 rounded-full text-blue-200 text-sm"
               >
-                <span>{tool}</span>
-                <button onClick={() => removeSkill('tools', index)} className="hover:text-red-300">
+                <span>{skill}</span>
+                <button onClick={() => removeSkill('soft', index)} className="hover:text-red-300">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -101,14 +101,14 @@ export const SkillsForm = () => {
           <div className="flex space-x-2">
             <input
               type="text"
-              value={newSkill.tools}
-              onChange={e => setNewSkill({ ...newSkill, tools: e.target.value })}
-              onKeyPress={e => handleKeyPress(e, 'tools')}
+              value={newSkill.soft}
+              onChange={e => setNewSkill({ ...newSkill, soft: e.target.value })}
+              onKeyPress={e => handleKeyPress(e, 'soft')}
               className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="e.g., Git, Docker, AWS"
+              placeholder="e.g., Communication, Leadership, Problem Solving"
             />
             <button
-              onClick={() => addSkill('tools')}
+              onClick={() => addSkill('soft')}
               className="px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-blue-200 font-medium transition-colors"
             >
               Add
@@ -117,16 +117,16 @@ export const SkillsForm = () => {
         </div>
       </GlassCardSection>
 
-      <GlassCardSection title="Languages">
+      <GlassCardSection title="Other Skills">
         <div className="space-y-3">
           <div className="flex flex-wrap gap-2">
-            {(resumeData.skills.languages || []).map((lang, index) => (
+            {(resumeData.skills.other || []).map((skill, index) => (
               <div
                 key={index}
                 className="flex items-center space-x-2 px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full text-green-200 text-sm"
               >
-                <span>{lang}</span>
-                <button onClick={() => removeSkill('languages', index)} className="hover:text-red-300">
+                <span>{skill}</span>
+                <button onClick={() => removeSkill('other', index)} className="hover:text-red-300">
                   <X className="w-3 h-3" />
                 </button>
               </div>
@@ -136,14 +136,14 @@ export const SkillsForm = () => {
           <div className="flex space-x-2">
             <input
               type="text"
-              value={newSkill.languages}
-              onChange={e => setNewSkill({ ...newSkill, languages: e.target.value })}
-              onKeyPress={e => handleKeyPress(e, 'languages')}
+              value={newSkill.other}
+              onChange={e => setNewSkill({ ...newSkill, other: e.target.value })}
+              onKeyPress={e => handleKeyPress(e, 'other')}
               className="flex-1 px-4 py-2 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="e.g., English (Native), Spanish (Fluent)"
+              placeholder="e.g., Tools, Certifications, Methodologies"
             />
             <button
-              onClick={() => addSkill('languages')}
+              onClick={() => addSkill('other')}
               className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 rounded-xl text-green-200 font-medium transition-colors"
             >
               Add

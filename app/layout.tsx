@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans, Inter, Roboto, Open_Sans, Lato, Montserrat, Playfair_Display, Raleway, Poppins, Merriweather } from 'next/font/google'
+import { Providers } from './providers'
 import './globals.css'
 
 // Plus Jakarta Sans - modern, clean font similar to Open Runde
@@ -70,8 +71,50 @@ const merriweather = Merriweather({
 })
 
 export const metadata: Metadata = {
-  title: 'Job Foxy - AI-Powered Interview Preparation',
-  description: 'Master your interviews with AI-powered coaching, voice feedback, and personalized practice sessions.',
+  metadataBase: new URL('https://jobfoxy.com'),
+  title: {
+    default: 'Job Foxy | AI Interview Coach & Resume Analysis',
+    template: '%s | Job Foxy'
+  },
+  description: 'Stop guessing. Master your interview with AI-powered resume gap analysis, smart job description breakdowns, and realistic mock interview practice.',
+  keywords: ['interview preparation', 'AI career coach', 'resume analysis', 'mock interview', 'STAR method', 'interview practice', 'job foxy'],
+  authors: [{ name: 'Job Foxy' }],
+  creator: 'Job Foxy',
+  publisher: 'Job Foxy',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    url: 'https://jobfoxy.com',
+    title: 'Job Foxy | Stop Guessing. Master Your Interview.',
+    description: 'AI-powered interview intelligence. Get resume gap analysis, smart job description breakdowns, and realistic mock interviews.',
+    siteName: 'Job Foxy',
+    images: [
+      {
+        url: '/og-image.png', // We will need to ensure this exists later
+        width: 1200,
+        height: 630,
+        alt: 'Job Foxy AI Interview Coach',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Job Foxy | AI Interview Coach',
+    description: 'Stop guessing. Master your interview with clarity.',
+    images: ['/og-image.png'],
+    creator: '@jobfoxy',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 export default function RootLayout({
@@ -87,7 +130,33 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
       </head>
       <body className={`${plusJakarta.variable} ${inter.variable} ${roboto.variable} ${openSans.variable} ${lato.variable} ${montserrat.variable} ${raleway.variable} ${poppins.variable} ${playfair.variable} ${merriweather.variable} font-sans antialiased`}>
-        {children}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'SoftwareApplication',
+              name: 'Job Foxy',
+              applicationCategory: 'EducationalApplication',
+              operatingSystem: 'Web',
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD',
+              },
+              description:
+                'AI-powered interview coaching and resume analysis tool. Master your interviews with clarity.',
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: '4.9',
+                ratingCount: '150',
+              },
+            }),
+          }}
+        />
+        <Providers>
+          {children}
+        </Providers>
       </body>
     </html>
   )

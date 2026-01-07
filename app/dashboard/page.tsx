@@ -18,12 +18,19 @@ import {
   Target,
   Clock,
   Zap,
+  Star, // Added missing import
+  Shield // Added missing import
 } from 'lucide-react'
 
 export default function DashboardPage() {
   const { profile } = useAuthStore()
   const [greeting, setGreeting] = useState('')
-  const [readinessScore, setReadinessScore] = useState(0)
+  const [stats, setStats] = useState<any>({
+    readinessScore: 0,
+    recentActivity: [],
+    counts: {}
+  })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const hour = new Date().getHours()
@@ -31,19 +38,47 @@ export default function DashboardPage() {
     else if (hour < 18) setGreeting('Good afternoon')
     else setGreeting('Good evening')
 
-    // Simulate readiness score calculation
-    const score = 72 // This would come from your backend/calculation
-    setReadinessScore(score)
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/dashboard/stats')
+        const data = await res.json()
+        if (data.success) {
+          setStats(data.data)
+        }
+      } catch (e) {
+        console.error('Failed to fetch stats', e)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchStats()
   }, [])
 
   const isPro = profile?.subscription_status === 'active' || profile?.subscription_status === 'trialing'
 
-  // Recent activity / continuity items
-  const recentActivity = [
-    { title: 'Resume Analysis', time: '2 days ago', icon: FileText, href: '/dashboard/resume' },
-    { title: 'SWOT Analysis', time: '5 days ago', icon: MessageSquare, href: '/dashboard/coaching' },
-    { title: 'Practice Session', time: '1 week ago', icon: Mic, href: '/dashboard/practice' },
-  ]
+  // Helper to format time ago
+  const timeAgo = (dateStr: string) => {
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+    
+    if (diffInSeconds < 60) return 'Just now'
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+    return `${Math.floor(diffInSeconds / 86400)}d ago`
+  }
+
+  // Map activity types to icons
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'resume': return FileText
+      case 'swot': return Target
+      case 'star': return Star
+      case 'gap': return Shield
+      case 'pitch': return Mic
+      default: return MessageSquare
+    }
+  }
 
   return (
     <div className="space-y-8">
@@ -89,19 +124,31 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Decorative Stats */}
-            <div className="grid grid-cols-3 gap-4 mt-8">
+            {/* Decorative Stats - Now Real User Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">98%</div>
-                <div className="text-white/50 text-sm">ATS Pass Rate</div>
+                <div className="text-3xl font-bold text-white">
+                  {loading ? '-' : (stats.avgAtsScore || 0)}
+                </div>
+                <div className="text-white/50 text-sm">Avg ATS Score</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">15k+</div>
-                <div className="text-white/50 text-sm">Resumes Analyzed</div>
+                <div className="text-3xl font-bold text-white">
+                  {loading ? '-' : (stats.counts?.resumes || 0)}
+                </div>
+                <div className="text-white/50 text-sm">Resumes</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-white">4.9★</div>
-                <div className="text-white/50 text-sm">User Rating</div>
+                <div className="text-3xl font-bold text-white">
+                  {loading ? '-' : (stats.counts?.mocks || 0)}
+                </div>
+                <div className="text-white/50 text-sm">Mock Interviews</div>
+              </div>
+              <div className="text-center">
+                <div className="text-3xl font-bold text-white">
+                  {loading ? '-' : (stats.counts?.coverLetters || 0)}
+                </div>
+                <div className="text-white/50 text-sm">Cover Letters</div>
               </div>
             </div>
           </div>
@@ -140,7 +187,7 @@ export default function DashboardPage() {
                     strokeWidth="12"
                     fill="none"
                     strokeDasharray={`${2 * Math.PI * 80}`}
-                    strokeDashoffset={`${2 * Math.PI * 80 * (1 - readinessScore / 100)}`}
+                    strokeDashoffset={`${2 * Math.PI * 80 * (1 - (loading ? 0 : stats.readinessScore) / 100)}`}
                     strokeLinecap="round"
                     className="transition-all duration-1000"
                   />
@@ -154,7 +201,9 @@ export default function DashboardPage() {
 
                 {/* Score Text */}
                 <div className="absolute inset-0 flex items-center justify-center flex-col">
-                  <div className="text-5xl font-bold text-white">{readinessScore}</div>
+                  <div className="text-5xl font-bold text-white">
+                    {loading ? '-' : stats.readinessScore}
+                  </div>
                   <div className="text-white/50 text-sm mt-1">out of 100</div>
                 </div>
               </div>
@@ -163,16 +212,16 @@ export default function DashboardPage() {
             {/* Score Breakdown */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-white/70 text-sm">Resume Quality</span>
-                <span className="text-white font-semibold">85%</span>
+                <span className="text-white/70 text-sm">Resume</span>
+                <span className="text-white font-semibold">{(stats.counts?.resumes || 0) > 0 ? 'Ready' : 'Pending'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/70 text-sm">Interview Prep</span>
-                <span className="text-white font-semibold">65%</span>
+                <span className="text-white/70 text-sm">STAR Stories</span>
+                <span className="text-white font-semibold">{stats.counts?.stars || 0}/3</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-white/70 text-sm">Skill Coverage</span>
-                <span className="text-white font-semibold">70%</span>
+                <span className="text-white/70 text-sm">Gap Defense</span>
+                <span className="text-white font-semibold">{(stats.counts?.gaps || 0) > 0 ? 'Done' : '-'}</span>
               </div>
             </div>
 
@@ -253,25 +302,31 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {recentActivity.map((activity, idx) => {
-              const Icon = activity.icon
-              return (
-                <Link
-                  key={idx}
-                  href={activity.href}
-                  className="flex items-center space-x-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group"
-                >
-                  <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Icon className="w-6 h-6 text-white/70" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-white font-semibold truncate">{activity.title}</div>
-                    <div className="text-white/50 text-sm">{activity.time}</div>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-white/70 group-hover:translate-x-1 transition-all" />
-                </Link>
-              )
-            })}
+            {stats.recentActivity && stats.recentActivity.length > 0 ? (
+              stats.recentActivity.map((activity: any, idx: number) => {
+                const Icon = getIcon(activity.type)
+                return (
+                  <Link
+                    key={idx}
+                    href={activity.href}
+                    className="flex items-center space-x-4 p-4 bg-white/5 hover:bg-white/10 rounded-xl transition-all group"
+                  >
+                    <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Icon className="w-6 h-6 text-white/70" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-white font-semibold truncate">{activity.title}</div>
+                      <div className="text-white/50 text-sm">{timeAgo(activity.date)}</div>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-white/40 group-hover:text-white/70 group-hover:translate-x-1 transition-all" />
+                  </Link>
+                )
+              })
+            ) : (
+              <div className="col-span-3 text-center py-8 text-white/40">
+                No recent activity. <Link href="/dashboard/coaching" className="text-purple-400 hover:text-purple-300">Start your first session!</Link>
+              </div>
+            )}
           </div>
         </div>
       </div>

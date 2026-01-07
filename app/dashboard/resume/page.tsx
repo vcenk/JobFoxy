@@ -9,6 +9,7 @@ import { useAuthStore } from '@/store/authStore'
 import { ResumeUploadModal } from '@/components/resume/ResumeUploadModal'
 import { LinkedInImportModal } from '@/components/resume/LinkedInImportModal'
 import { ScoreBadge } from '@/components/ui/ScoreBadge'
+import { UpgradeModal } from '@/components/ui/UpgradeModal'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import {
   Plus,
@@ -56,8 +57,11 @@ export default function ResumeLibraryPage() {
   const [loading, setLoading] = useState(true)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showLinkedInModal, setShowLinkedInModal] = useState(false)
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<ViewMode>('list')
+  const [renamingResume, setRenamingResume] = useState<Resume | null>(null)
+  const [newResumeTitle, setNewResumeTitle] = useState('')
 
   useEffect(() => {
     if (user) {
@@ -89,6 +93,15 @@ export default function ResumeLibraryPage() {
           is_base_version: true,
         }),
       })
+
+      // Check for usage limit
+      if (response.status === 403) {
+        const data = await response.json()
+        if (data.code === 'LIMIT_REACHED') {
+          setShowUpgradeModal(true)
+          return
+        }
+      }
 
       const data = await response.json()
       if (data.success && data.resume?.id) {
@@ -127,6 +140,35 @@ export default function ResumeLibraryPage() {
     } catch (error) {
       console.error('Failed to duplicate resume:', error)
     }
+  }
+
+  const handleRenameResume = async () => {
+    if (!renamingResume || !newResumeTitle.trim()) return
+
+    try {
+      const response = await fetch(`/api/resume/${renamingResume.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newResumeTitle.trim() }),
+      })
+
+      const data = await response.json()
+      if (data.success) {
+        // Update local state
+        setResumes(resumes.map(r =>
+          r.id === renamingResume.id ? { ...r, title: newResumeTitle.trim() } : r
+        ))
+        setRenamingResume(null)
+        setNewResumeTitle('')
+      }
+    } catch (error) {
+      console.error('Failed to rename resume:', error)
+    }
+  }
+
+  const openRenameModal = (resume: Resume) => {
+    setRenamingResume(resume)
+    setNewResumeTitle(resume.title)
   }
 
   const filteredResumes = resumes.filter(r => 
@@ -279,6 +321,16 @@ export default function ResumeLibraryPage() {
                         >
                           <Pencil className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
                           Edit
+                        </DropdownMenu.Item>
+                        <DropdownMenu.Item
+                          className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            openRenameModal(resume)
+                          }}
+                        >
+                          <FileText className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
+                          Rename
                         </DropdownMenu.Item>
                         <DropdownMenu.Item
                           className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
@@ -440,6 +492,13 @@ export default function ResumeLibraryPage() {
                               </DropdownMenu.Item>
                               <DropdownMenu.Item
                                 className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
+                                onClick={() => openRenameModal(resume)}
+                              >
+                                <FileText className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
+                                Rename
+                              </DropdownMenu.Item>
+                              <DropdownMenu.Item
+                                className="group flex items-center px-2 py-2 text-sm text-white/80 outline-none cursor-pointer hover:bg-white/10 hover:text-white rounded-md transition-colors"
                                 onClick={() => handleDuplicateResume(resume.id)}
                               >
                                 <Copy className="w-4 h-4 mr-2 text-white/50 group-hover:text-white" />
@@ -468,6 +527,56 @@ export default function ResumeLibraryPage() {
         )}
       </div>
 
+      {/* Rename Modal */}
+      {renamingResume && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1a] border border-white/10 rounded-xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-xl font-bold text-white mb-4">Rename Resume</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm text-white/60 mb-2">Resume Title</label>
+                <input
+                  type="text"
+                  value={newResumeTitle}
+                  onChange={(e) => setNewResumeTitle(e.target.value)}
+                  className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Enter new title..."
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      handleRenameResume()
+                    } else if (e.key === 'Escape') {
+                      setRenamingResume(null)
+                      setNewResumeTitle('')
+                    }
+                  }}
+                />
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-2">
+                <button
+                  onClick={() => {
+                    setRenamingResume(null)
+                    setNewResumeTitle('')
+                  }}
+                  className="px-4 py-2 rounded-lg border border-white/10 text-white/80 hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRenameResume}
+                  disabled={!newResumeTitle.trim()}
+                  className="px-4 py-2 rounded-lg bg-purple-500 text-white hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Import Modal */}
       <ResumeUploadModal
         isOpen={showImportModal}
@@ -480,6 +589,13 @@ export default function ResumeLibraryPage() {
         isOpen={showLinkedInModal}
         onClose={() => setShowLinkedInModal(false)}
         onImportSuccess={(resumeId) => router.push(`/dashboard/resume/${resumeId}`)}
+      />
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Resume Builds"
       />
     </div>
   )

@@ -8,9 +8,11 @@ import { useResume } from '@/contexts/ResumeContext'
 
 interface ResumePaperProps {
   children: ReactNode
+  className?: string
+  style?: React.CSSProperties
 }
 
-export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
+export const ResumePaper: React.FC<ResumePaperProps> = ({ children, className, style }) => {
   const { designerSettings, resumeData } = useResume()
 
   const PAGE_DIMENSIONS = {
@@ -19,6 +21,9 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
   }
 
   const currentDim = PAGE_DIMENSIONS[designerSettings.paperSize]
+  const pageBreakColor = '#e5e7eb'
+  const pageBreakThicknessPx = 1
+  const pageBreakOffsetPx = currentDim.heightPx - pageBreakThicknessPx
 
   const PageNumberStyles = () => {
     const { enabled, alignment } = designerSettings.pageNumbers
@@ -129,7 +134,7 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
       <PageNumberStyles />
       <div
         id="resume-paper"
-        className="resume-paper bg-white shadow-2xl transition-all duration-300 ease-in-out relative"
+        className={`resume-paper bg-white shadow-2xl transition-all duration-300 ease-in-out relative ${className || ''}`}
         style={{
           width: currentDim.width,
           minHeight: currentDim.height,
@@ -140,6 +145,10 @@ export const ResumePaper: React.FC<ResumePaperProps> = ({ children }) => {
           fontFamily: getFontFamily(),
           lineHeight: designerSettings.lineHeight,
           fontSize: `${designerSettings.fontSizeBody}pt`,
+          backgroundImage: `linear-gradient(to bottom, #ffffff 0, #ffffff ${pageBreakOffsetPx}px, ${pageBreakColor} ${pageBreakOffsetPx}px, ${pageBreakColor} ${currentDim.heightPx}px)`,
+          backgroundSize: `100% ${currentDim.heightPx}px`,
+          backgroundRepeat: 'repeat-y',
+          ...style,
         }}
       >
         {children}

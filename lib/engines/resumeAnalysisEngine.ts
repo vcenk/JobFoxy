@@ -88,9 +88,46 @@ Return JSON in this exact structure:
   ],
   "section_feedback": [
     {
+      "section": "Professional Summary",
+      "feedback": "Specific advice on how to improve the summary section...",
+      "score": <number 0-100>,
+      "suggestedKeywords": ["keyword1", "keyword2"],
+      "improvementTips": ["Tip 1 for this section", "Tip 2"],
+      "exampleImprovement": {
+        "before": "Quote a weak sentence from the resume",
+        "after": "Show improved version of that sentence"
+      }
+    },
+    {
       "section": "Experience",
-      "feedback": "Specific advice on how to improve this section...",
-      "score": <number 0-100>
+      "feedback": "Specific advice on how to improve the experience section...",
+      "score": <number 0-100>,
+      "weakBullets": [
+        {
+          "original": "Quote the actual weak bullet from the resume",
+          "issue": "Why this bullet is weak (e.g., 'No metrics', 'Starts with weak verb')",
+          "suggestion": "Try: 'Spearheaded X achieving Y result'"
+        }
+      ],
+      "suggestedKeywords": ["action verb", "metric type"],
+      "improvementTips": ["Start each bullet with action verb", "Add metrics to quantify impact"],
+      "exampleImprovement": {
+        "before": "Was responsible for managing team projects",
+        "after": "Led cross-functional team of 8, delivering 3 projects on time"
+      }
+    },
+    {
+      "section": "Skills",
+      "feedback": "Specific advice on how to improve the skills section...",
+      "score": <number 0-100>,
+      "suggestedKeywords": ["skill1", "skill2", "skill3"],
+      "improvementTips": ["Group skills by category", "Add proficiency levels"]
+    },
+    {
+      "section": "Education",
+      "feedback": "Specific advice on how to improve the education section...",
+      "score": <number 0-100>,
+      "improvementTips": ["Add relevant coursework", "Include GPA if above 3.5"]
     }
   ],
   "bullet_suggestions": [
@@ -312,15 +349,40 @@ Return JSON in this exact structure:
   ],
   "section_feedback": [
     {
+      "section": "Professional Summary",
+      "feedback": "Detailed advice on how to improve this section for this specific job...",
+      "score": <number 0-100>
+    },
+    {
       "section": "Experience",
-      "feedback": "Detailed advice on improving this section",
+      "feedback": "Detailed advice on the work experience section...",
+      "score": <number 0-100>
+    },
+    {
+      "section": "Skills",
+      "feedback": "Detailed advice on the skills section...",
+      "score": <number 0-100>
+    },
+    {
+      "section": "Education",
+      "feedback": "Detailed advice on the education section...",
       "score": <number 0-100>
     }
   ],
   "bullet_suggestions": ["Specific actionable bullet improvements"],
   "overall_summary": "Brief technical summary for compatibility",
   "strengths": ["Strength 1", "Strength 2", "Strength 3"],
-  "weaknesses": ["Weakness 1", "Weakness 2"]
+  "weaknesses": ["Weakness 1", "Weakness 2"],
+
+  "jd_requirements": [
+    {
+      "requirement": "Specific requirement extracted from JD (e.g., '5+ years React experience')",
+      "category": "experience" | "skill" | "education" | "certification" | "other",
+      "importance": "required" | "preferred" | "nice-to-have",
+      "status": "matched" | "partial" | "missing",
+      "evidence": "Quote from resume that matches this requirement, or null if missing"
+    }
+  ]
 }
 `.trim()
 

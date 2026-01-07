@@ -16,6 +16,7 @@ export interface ParsedResume {
     github?: string
     portfolio?: string
   }
+  targetTitle?: string  // Job title/position being targeted
   summary?: RichText  // Changed from string to RichText (JSON format)
   experience: Array<{
     company: string
@@ -35,9 +36,8 @@ export interface ParsedResume {
   }>
   skills: {
     technical?: string[]
-    languages?: string[]
-    tools?: string[]
-    certifications?: string[]
+    soft?: string[]
+    other?: string[]
   }
   languages?: Array<{
     language: string

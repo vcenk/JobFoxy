@@ -159,7 +159,7 @@ export function parseLinkedInProfile(linkedinData: LinkedInProfile): ParsedResum
   // Parse skills
   if (linkedinData.skills && Array.isArray(linkedinData.skills)) {
     const technical: string[] = []
-    const tools: string[] = []
+    const other: string[] = []
 
     linkedinData.skills.forEach(skill => {
       if (skill.name) {
@@ -167,14 +167,14 @@ export function parseLinkedInProfile(linkedinData: LinkedInProfile): ParsedResum
         if (skill.keywords && skill.keywords.length > 0) {
           technical.push(skill.name)
         } else {
-          tools.push(skill.name)
+          other.push(skill.name)
         }
       }
     })
 
     resume.skills = {
       technical,
-      tools: tools.length > 0 ? tools : undefined,
+      other: other.length > 0 ? other : undefined,
     }
   }
 
@@ -182,7 +182,7 @@ export function parseLinkedInProfile(linkedinData: LinkedInProfile): ParsedResum
   if (linkedinData.projects && Array.isArray(linkedinData.projects)) {
     resume.projects = linkedinData.projects.map(project => ({
       name: project.name || '',
-      description: plainTextToJSON(project.description || ''),
+      description: project.description || '',
       technologies: project.keywords || [],
       link: project.url || '',
     }))
@@ -215,7 +215,7 @@ export function parseLinkedInProfile(linkedinData: LinkedInProfile): ParsedResum
       startDate: vol.startDate || '',
       endDate: vol.endDate || '',
       current: !vol.endDate,
-      description: plainTextToJSON(vol.summary || ''),
+      description: vol.summary || '',
     }))
   }
 

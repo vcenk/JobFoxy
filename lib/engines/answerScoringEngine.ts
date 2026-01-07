@@ -245,7 +245,7 @@ Start directly with the answer.
       maxTokens: 600,
     })
 
-    return result.ideal_answer
+    return result?.ideal_answer ?? null
   } catch (error) {
     console.error('[Ideal Answer Generation Error]:', error)
     return null

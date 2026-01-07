@@ -29,6 +29,22 @@ export async function POST(req: NextRequest) {
 
     const { resumeId, jobDescriptionId, gapType, gapDescription } = body
 
+    // Check if defense for this exact gap already exists
+    const { data: existingDefense } = await supabaseAdmin
+      .from('gap_defenses')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('gap_type', gapType)
+      .eq('gap_description', gapDescription)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // If exists, return it instead of regenerating
+    if (existingDefense) {
+      return successResponse(existingDefense)
+    }
+
     // 1. Get Resume context
     const { data: resume } = await supabaseAdmin
       .from('resumes')
@@ -95,5 +111,28 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[Gap Defense API Critical Error]:', error)
     return serverErrorResponse((error as Error).message)
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return unauthorizedResponse()
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('gap_defenses')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[Gap Defense Fetch Error]:', error)
+      return serverErrorResponse()
+    }
+
+    return successResponse({ defenses: data })
+  } catch (error) {
+    console.error('[Gap Defense GET Error]:', error)
+    return serverErrorResponse()
   }
 }

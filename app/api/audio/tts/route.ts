@@ -2,15 +2,11 @@
 // Convert text to speech using Deepgram
 
 import { NextRequest } from 'next/server'
-import { createClient } from '@deepgram/sdk'  // @deepgram/sdk
-import { env } from '@/lib/config/env'  // lib/config/env.ts
-import {
-  getAuthUser,
-  unauthorizedResponse,
-  badRequestResponse,
-  serverErrorResponse,
-  validateRequiredFields,
-} from '@/lib/utils/apiHelpers'  // lib/utils/apiHelpers.ts
+import { createClient } from '@deepgram/sdk'
+import { env } from '@/lib/config/env'
+import { getAuthUser, unauthorizedResponse, badRequestResponse, serverErrorResponse, validateRequiredFields } from '@/lib/utils/apiHelpers'
+import { getDeepgramModel } from '@/lib/utils/deepgramHelpers'
+import { supabaseAdmin } from '@/lib/clients/supabaseClient'
 
 export async function POST(req: NextRequest) {
   // Authenticate user
@@ -28,12 +24,32 @@ export async function POST(req: NextRequest) {
       return badRequestResponse(`Missing fields: ${validation.missing?.join(', ')}`)
     }
 
-    const { text, voice } = body
+    const { text } = body // 'voice' will now be determined by user preferences
 
     // Validate text length (max 2000 characters for TTS)
     if (text.length > 2000) {
       return badRequestResponse('Text exceeds maximum length of 2000 characters')
     }
+
+    // Fetch user preferences for voice selection
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from('profiles')
+      .select('preferences')
+      .eq('id', user.id)
+      .single()
+
+    if (profileError || !profile || !profile.preferences) {
+      console.warn('[TTS API]: User preferences not found, using default voice.', profileError)
+    }
+
+    const userPreferences = profile?.preferences || {};
+    const deepgramPrefs = userPreferences.deepgram || {};
+
+    const selectedVoiceModel = getDeepgramModel(
+      deepgramPrefs.language || 'en',
+      deepgramPrefs.gender || 'female',
+      deepgramPrefs.style || 'professional'
+    );
 
     // Initialize Deepgram client
     const deepgram = createClient(env.deepgram.apiKey)
@@ -42,9 +58,9 @@ export async function POST(req: NextRequest) {
     const response = await deepgram.speak.request(
       { text },
       {
-        model: voice || env.deepgram.ttsModel,
-        encoding: 'mp3',
-        container: 'mp3',
+        model: selectedVoiceModel,
+        encoding: 'linear16',
+        container: 'wav',
       }
     )
 
@@ -67,11 +83,11 @@ export async function POST(req: NextRequest) {
     // Combine chunks into single buffer
     const audioBuffer = Buffer.concat(chunks)
 
-    // Return audio as MP3
+    // Return audio as WAV
     return new Response(audioBuffer, {
       status: 200,
       headers: {
-        'Content-Type': 'audio/mpeg',
+        'Content-Type': 'audio/wav',
         'Content-Length': audioBuffer.length.toString(),
         'Cache-Control': 'public, max-age=31536000', // Cache for 1 year
       },

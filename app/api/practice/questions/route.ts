@@ -34,9 +34,9 @@ export async function POST(req: NextRequest) {
     const { category, difficulty, questionCount, resumeId, jobDescriptionId } = body
 
     // Check usage limits for practice sessions
-    const limitCheck = await checkUsageLimits(user.id, 'practice_sessions')
+    const limitCheck = await checkUsageLimits(user.id, 'audio_practice')
     if (!limitCheck.allowed) {
-      return badRequestResponse(limitCheck.message || 'Practice session limit reached')
+      return badRequestResponse(limitCheck.reason || 'Practice session limit reached')
     }
 
     // Get resume if provided
@@ -78,10 +78,11 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         resume_id: resumeId,
         job_description_id: jobDescriptionId,
-        session_type: category,
-        difficulty_level: difficulty,
+        question_category: category,
+        difficulty: difficulty,
         status: 'in_progress',
         total_questions: questionCount,
+        title: `${category.charAt(0).toUpperCase() + category.slice(1)} Practice`,
       })
       .select()
       .single()
@@ -108,15 +109,26 @@ export async function POST(req: NextRequest) {
     }
 
     // Save questions to database
+    // If difficulty is 'random', assign a random difficulty to each question
+    const difficultyLevels = ['easy', 'medium', 'hard']
+    const getQuestionDifficulty = (baseDifficulty: string) => {
+      if (baseDifficulty === 'random') {
+        return difficultyLevels[Math.floor(Math.random() * difficultyLevels.length)]
+      }
+      return baseDifficulty
+    }
+
     const questionInserts = questions.map((q, index) => ({
-      practice_session_id: session.id,
+      session_id: session.id,
       question_text: q.text,
-      question_type: q.type,
-      category: category,
-      difficulty: difficulty,
-      sequence_number: index + 1,
-      suggested_duration_seconds: q.suggested_duration || 120,
-      tips: q.tips,
+      question_category: category,
+      difficulty: getQuestionDifficulty(difficulty),
+      order_index: index + 1,
+      expected_components: {
+        tips: q.tips,
+        suggested_duration: q.suggested_duration || 120,
+        type: q.type
+      },
     }))
 
     const { data: savedQuestions, error: questionsError } = await supabaseAdmin

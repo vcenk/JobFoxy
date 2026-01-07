@@ -92,11 +92,11 @@ export function resumeToPlainText(resume: ParsedResume): string {
     if (resume.skills.technical && resume.skills.technical.length > 0) {
       sections.push(`Technical: ${resume.skills.technical.join(', ')}`)
     }
-    if (resume.skills.languages && resume.skills.languages.length > 0) {
-      sections.push(`Languages: ${resume.skills.languages.join(', ')}`)
+    if (resume.skills.soft && resume.skills.soft.length > 0) {
+      sections.push(`Soft Skills: ${resume.skills.soft.join(', ')}`)
     }
-    if (resume.skills.tools && resume.skills.tools.length > 0) {
-      sections.push(`Tools: ${resume.skills.tools.join(', ')}`)
+    if (resume.skills.other && resume.skills.other.length > 0) {
+      sections.push(`Other: ${resume.skills.other.join(', ')}`)
     }
   }
 

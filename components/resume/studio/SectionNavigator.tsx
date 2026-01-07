@@ -142,8 +142,8 @@ export const SectionNavigator = () => {
     const { active, over } = event
 
     if (over && active.id !== over.id) {
-      const oldIndex = sectionOrder.indexOf(active.id as string)
-      const newIndex = sectionOrder.indexOf(over.id as string)
+      const oldIndex = sectionOrder.indexOf(active.id as any)
+      const newIndex = sectionOrder.indexOf(over.id as any)
 
       setSectionOrder(arrayMove(sectionOrder, oldIndex, newIndex))
     }

@@ -1,7 +1,7 @@
 // components/resume/analysis/JobAnalysisView.tsx
 'use client'
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { ArrowRight, Loader2, Target, FileText, Check, AlertCircle, Download } from 'lucide-react'
@@ -9,28 +9,44 @@ import { AnalysisDashboard, AnalysisData } from './AnalysisDashboard'
 import { ResumeAnalysisResult } from '@/lib/types/analysis'
 import { UpgradeModal } from '@/components/ui/UpgradeModal'
 import { getAvailableIndustries } from '@/lib/data/atsKeywords'
+import { useResume } from '@/contexts/ResumeContext'
+import { plainTextToJSON, jsonToPlainText } from '@/lib/utils/richTextHelpers'
+import { ExportDropdown } from '@/components/ui/ExportDropdown'
+import { exportAnalysisReportToDocx } from '@/lib/utils/docxExport'
+import { OptimizeConfirmModal } from './OptimizeConfirmModal'
+import { useToast } from '@/contexts/ToastContext'
 
 export interface JobAnalysisViewRef {
   handleExportReport: () => Promise<void>
+  handleExportDOCX: () => Promise<void>
 }
 
 interface JobAnalysisViewProps {
   resumeId: string
   currentResumeText?: string // Optional context for display
+  onSwitchToBuilder?: () => void // Callback to switch to builder view
 }
 
-export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewProps>(({ resumeId, currentResumeText }, ref) => {
+export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewProps>(({ resumeId, currentResumeText, onSwitchToBuilder }, ref) => {
   const router = useRouter()
+  const toast = useToast()
+  const { resumeData, setResumeData } = useResume()
+  const containerRef = useRef<HTMLDivElement>(null)
   const [jobTitle, setJobTitle] = useState('')
   const [company, setCompany] = useState('')
   const [jobDescription, setJobDescription] = useState('')
   const [industry, setIndustry] = useState('')
   const [analyzing, setAnalyzing] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
   const [analysisResult, setAnalysisResult] = useState<AnalysisData | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loadingExisting, setLoadingExisting] = useState(true)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+  const [showOptimizeModal, setShowOptimizeModal] = useState(false)
+  const [optimizationComplete, setOptimizationComplete] = useState(false)
+  const [optimizationMessage, setOptimizationMessage] = useState('')
+  const [resumeRawText, setResumeRawText] = useState<string>('')
 
   // Get available industries for dropdown
   const availableIndustries = getAvailableIndustries()
@@ -76,7 +92,14 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
               formatting_issues: results.formatting_issues || [],
               skills_radar_data: results.skills_radar_data || [],
               missing_skills: results.missing_skills || [],
+              section_feedback: results.section_feedback || [],
+              jd_requirements: results.jd_requirements || [],
             })
+          }
+
+          // Store resume raw text for ATS keyword analysis
+          if (data.resume.raw_text) {
+            setResumeRawText(data.resume.raw_text)
           }
 
           // Load job description info if available
@@ -208,6 +231,8 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
             formatting_issues: result.formatting_issues || [],
             skills_radar_data: result.skills_radar_data || [],
             missing_skills: result.missing_skills || [],
+            section_feedback: result.section_feedback || [],
+            jd_requirements: result.jd_requirements || [],
           })
         }
       } else {
@@ -236,10 +261,10 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
       const pageHeight = doc.internal.pageSize.getHeight()
       const margin = 20
       const maxWidth = pageWidth - (margin * 2)
-      let yPos = margin
+      let yPos = 0
 
-      // Helper function to add text with auto page break
-      const addText = (text: string, fontSize: number, isBold: boolean = false, color: [number, number, number] = [0, 0, 0]) => {
+      // --- Helper Functions ---
+      const addText = (text: string, fontSize: number, isBold: boolean = false, color: [number, number, number] = [60, 60, 60], align: 'left' | 'center' | 'right' = 'left', xOffset: number = margin) => {
         doc.setFontSize(fontSize)
         doc.setFont('helvetica', isBold ? 'bold' : 'normal')
         doc.setTextColor(color[0], color[1], color[2])
@@ -247,238 +272,211 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
         const lines = doc.splitTextToSize(text, maxWidth)
 
         lines.forEach((line: string) => {
-          if (yPos + fontSize * 0.5 > pageHeight - margin) {
+          if (yPos + fontSize * 0.4 > pageHeight - margin) {
             doc.addPage()
             yPos = margin
           }
-          doc.text(line, margin, yPos)
+          doc.text(line, xOffset, yPos, { align })
           yPos += fontSize * 0.5
         })
       }
 
-      const addSpace = (space: number = 6) => {
-        yPos += space
+      const addSectionHeader = (title: string) => {
+        yPos += 5
+        if (yPos > pageHeight - margin - 20) { doc.addPage(); yPos = margin + 10; }
+
+        doc.setFillColor(245, 245, 245)
+        doc.roundedRect(margin - 5, yPos - 8, maxWidth + 10, 12, 2, 2, 'F')
+
+        addText(title.toUpperCase(), 12, true, [106, 71, 255])
+        yPos += 5
       }
 
-      // Title
+      // --- 1. Header Block ---
       doc.setFillColor(106, 71, 255) // Purple
-      doc.rect(0, 0, pageWidth, 40, 'F')
+      doc.rect(0, 0, pageWidth, 50, 'F')
+
+      yPos = 20
       doc.setTextColor(255, 255, 255)
       doc.setFontSize(24)
       doc.setFont('helvetica', 'bold')
-      doc.text('RESUME ANALYSIS REPORT', pageWidth / 2, 20, { align: 'center' })
-      doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth / 2, 30, { align: 'center' })
+      doc.text('JOB FIT ANALYSIS', margin, yPos)
 
-      yPos = 50
-
-      // Job Information
-      if (jobTitle) {
-        addText(`Job Title: ${jobTitle}`, 12, true)
-        if (company) {
-          addText(`Company: ${company}`, 12, true)
-        }
-        addSpace(10)
-      }
-
-      // Scores Section
-      doc.setFillColor(240, 240, 240)
-      doc.rect(margin, yPos, maxWidth, 40, 'F')
       yPos += 10
-      addText('SCORES', 14, true, [106, 71, 255])
-      addSpace(5)
-      addText(`ATS Score: ${analysisResult.ats_score}%`, 11, false)
-      if (analysisResult.jd_match_score) {
-        addText(`Job Match: ${analysisResult.jd_match_score}%`, 11, false)
-      }
-      addText(`Skills Fit: ${analysisResult.skills_fit_score}%`, 11, false)
-      addSpace(10)
+      doc.setFontSize(14)
+      doc.setFont('helvetica', 'normal')
+      if (jobTitle) doc.text(jobTitle, margin, yPos)
 
-      // Coaching Summary
+      yPos += 6
+      doc.setFontSize(10)
+      doc.setTextColor(200, 200, 255)
+      if (company) doc.text(`at ${company}`, margin, yPos)
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, pageWidth - margin, yPos, { align: 'right' })
+
+      yPos = 70 // Start content below header
+
+      // --- 2. Score Dashboard ---
+      const drawScoreBox = (label: string, score: number, x: number) => {
+        const boxWidth = (maxWidth - 20) / 3
+
+        // Color based on score
+        let r = 255, g = 0, b = 0
+        if (score >= 70) { r = 34; g = 197; b = 94 } // Green
+        else if (score >= 50) { r = 245; g = 158; b = 11 } // Orange
+
+        doc.setDrawColor(r, g, b)
+        doc.setLineWidth(1)
+        doc.roundedRect(x, yPos, boxWidth, 30, 3, 3, 'S')
+
+        // Score
+        doc.setTextColor(r, g, b)
+        doc.setFontSize(28)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`${score}%`, x + boxWidth / 2, yPos + 18, { align: 'center' })
+
+        // Label
+        doc.setTextColor(100, 100, 100)
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'bold')
+        doc.text(label.toUpperCase(), x + boxWidth / 2, yPos + 26, { align: 'center' })
+      }
+
+      drawScoreBox("ATS Score", analysisResult.ats_score, margin)
+      drawScoreBox("Job Match", analysisResult.jd_match_score || 0, margin + ((maxWidth - 20) / 3) + 10)
+      drawScoreBox("Skills Fit", analysisResult.skills_fit_score || 0, margin + ((maxWidth - 20) / 3) * 2 + 20)
+
+      yPos += 45
+
+      // --- 3. Coaching Summary ---
       if (analysisResult.coaching_summary) {
-        addText('OVERALL ASSESSMENT', 14, true, [106, 71, 255])
-        addSpace(5)
+        addSectionHeader("Executive Summary")
         const summary = typeof analysisResult.coaching_summary === 'string'
           ? analysisResult.coaching_summary
           : analysisResult.coaching_summary.insight
-        addText(summary, 10, false)
-        addSpace(10)
+        addText(summary, 10, false, [60, 60, 60])
+        yPos += 5
       }
 
-      // ATS Score Explanation
-      if (analysisResult.ats_score_explanation) {
-        addText('ATS SCORE EXPLAINED', 14, true, [106, 71, 255])
-        addSpace(5)
-        addText(analysisResult.ats_score_explanation, 10, false)
-        addSpace(10)
+      // --- 4. Keywords ---
+      const matched = analysisResult.matched_keywords || [];
+      const missing = analysisResult.missing_keywords || [];
+
+      if (matched.length > 0 || missing.length > 0) {
+        addSectionHeader("Keyword Analysis")
+
+        if (matched.length > 0) {
+          addText("MATCHED KEYWORDS:", 9, true, [34, 197, 94])
+          addText(matched.join(', '), 9, false)
+          yPos += 3
+        }
+
+        if (missing.length > 0) {
+          addText("MISSING KEYWORDS:", 9, true, [239, 68, 68])
+          addText(missing.join(', '), 9, false)
+          yPos += 3
+        }
       }
 
-      // Job Match Explanation
-      if (analysisResult.job_match_explanation) {
-        addText('JOB MATCH ANALYSIS', 14, true, [106, 71, 255])
-        addSpace(5)
-        addText(analysisResult.job_match_explanation, 10, false)
-        addSpace(10)
-      }
-
-      // Skills Fit Explanation
-      if (analysisResult.skills_fit_explanation) {
-        addText('SKILLS ASSESSMENT', 14, true, [106, 71, 255])
-        addSpace(5)
-        addText(analysisResult.skills_fit_explanation, 10, false)
-        addSpace(10)
-      }
-
-      // Keyword Strategy
-      if (analysisResult.keyword_strategy) {
-        addText('KEYWORD STRATEGY', 14, true, [106, 71, 255])
-        addSpace(5)
-        addText(analysisResult.keyword_strategy, 10, false)
-        addSpace(10)
-      }
-
-      // Matched Keywords
-      if (analysisResult.matched_keywords && analysisResult.matched_keywords.length > 0) {
-        addText(`MATCHED KEYWORDS (${analysisResult.matched_keywords.length})`, 14, true, [34, 197, 94])
-        addSpace(5)
-        addText(analysisResult.matched_keywords.join(', '), 9, false)
-        addSpace(10)
-      }
-
-      // Missing Keywords
-      if (analysisResult.missing_keywords && analysisResult.missing_keywords.length > 0) {
-        addText(`MISSING KEYWORDS (${analysisResult.missing_keywords.length})`, 14, true, [239, 68, 68])
-        addSpace(5)
-        addText(analysisResult.missing_keywords.join(', '), 9, false)
-        addSpace(10)
-      }
-
-      // ATS Health Check
-      if (analysisResult.ats_health_check) {
-        addText('ATS HEALTH CHECK', 14, true, [106, 71, 255])
-        addSpace(5)
-        addText(analysisResult.ats_health_check, 10, false)
-        addSpace(10)
-      }
-
-      // ATS Warnings
-      if (analysisResult.ats_warnings && analysisResult.ats_warnings.length > 0) {
-        addText('ATS WARNINGS & RECOMMENDATIONS', 14, true, [239, 68, 68])
-        addSpace(5)
-        analysisResult.ats_warnings.forEach((warning, i) => {
-          addText(`${i + 1}. [${warning.severity.toUpperCase()}] ${warning.issue}`, 10, true)
-          addText(`   → ${warning.recommendation}`, 9, false, [60, 60, 60])
-          addSpace(4)
-        })
-        addSpace(10)
-      }
-
-      // Bullet Improvements
+      // --- 5. Improvements ---
       if (analysisResult.bullet_improvements && analysisResult.bullet_improvements.length > 0) {
-        addText('BULLET POINT IMPROVEMENTS', 14, true, [106, 71, 255])
-        addSpace(5)
-        analysisResult.bullet_improvements.forEach((improvement, i) => {
-          addText(`Example ${i + 1}:`, 11, true)
-          addSpace(3)
-          addText(`BEFORE: ${improvement.before}`, 9, false, [239, 68, 68])
-          addSpace(3)
-          addText(`AFTER: ${improvement.after}`, 9, false, [34, 197, 94])
-          addSpace(3)
-          addText(`WHY: ${improvement.reason}`, 9, false, [59, 130, 246])
-          addSpace(8)
-        })
-      }
+        addSectionHeader("Recommended Improvements")
 
-      // Skills Breakdown
-      if (analysisResult.skills_breakdown_coaching) {
-        addText('SKILLS BREAKDOWN', 14, true, [106, 71, 255])
-        addSpace(5)
-        const breakdown = analysisResult.skills_breakdown_coaching
-        if (breakdown.technical) {
-          addText('Technical Skills:', 11, true)
-          addText(breakdown.technical, 9, false)
-          addSpace(4)
-        }
-        if (breakdown.tools) {
-          addText('Tools & Technologies:', 11, true)
-          addText(breakdown.tools, 9, false)
-          addSpace(4)
-        }
-        if (breakdown.domain) {
-          addText('Domain Knowledge:', 11, true)
-          addText(breakdown.domain, 9, false)
-          addSpace(4)
-        }
-        if (breakdown.communication) {
-          addText('Communication:', 11, true)
-          addText(breakdown.communication, 9, false)
-          addSpace(4)
-        }
-        if (breakdown.soft_skills) {
-          addText('Soft Skills:', 11, true)
-          addText(breakdown.soft_skills, 9, false)
-          addSpace(4)
-        }
-        addSpace(10)
-      }
+        analysisResult.bullet_improvements.forEach((imp, i) => {
+          if (yPos > pageHeight - margin - 40) { doc.addPage(); yPos = margin + 10; }
 
-      // Strengths
-      if (analysisResult.strength_highlights && analysisResult.strength_highlights.length > 0) {
-        addText('YOUR STRENGTHS', 14, true, [34, 197, 94])
-        addSpace(5)
-        analysisResult.strength_highlights.forEach((strength, i) => {
-          addText(`${i + 1}. ${strength}`, 10, false)
-          addSpace(4)
+          yPos += 2
+          addText(`SUGGESTION ${i + 1}:`, 10, true, [106, 71, 255])
+
+          // Before
+          doc.setFillColor(255, 245, 245)
+          doc.roundedRect(margin, yPos, maxWidth, 10, 1, 1, 'F')
+          doc.setTextColor(220, 38, 38)
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.text("BEFORE:", margin + 2, yPos + 6)
+          doc.setFont('helvetica', 'normal')
+          doc.text(imp.before.substring(0, 90) + "...", margin + 20, yPos + 6)
+          yPos += 12
+
+          // After
+          doc.setFillColor(240, 253, 244)
+          doc.roundedRect(margin, yPos, maxWidth, 10, 1, 1, 'F')
+          doc.setTextColor(22, 163, 74)
+          doc.setFontSize(9)
+          doc.setFont('helvetica', 'bold')
+          doc.text("AFTER:", margin + 2, yPos + 6)
+          doc.setFont('helvetica', 'normal')
+          doc.text(imp.after.substring(0, 90) + "...", margin + 20, yPos + 6)
+          yPos += 12
+
+          addText(`Why: ${imp.reason}`, 9, false, [100, 100, 100])
+          yPos += 6
         })
-        addSpace(10)
       }
 
       // Footer
+      const footerY = pageHeight - 10
       doc.setFontSize(8)
       doc.setTextColor(150, 150, 150)
-      const footerY = pageHeight - 10
-      doc.text('Generated by JobFoxy Resume Analyzer', pageWidth / 2, footerY, { align: 'center' })
+      doc.text('Generated by JobFoxy AI Analysis', pageWidth / 2, footerY, { align: 'center' })
 
       // Save PDF
-      const fileName = `Resume-Analysis-${jobTitle?.replace(/\s+/g, '-') || 'Report'}-${new Date().toISOString().split('T')[0]}.pdf`
+      const fileName = `Analysis-Report-${jobTitle?.replace(/\s+/g, '-') || 'JobFoxy'}.pdf`
       doc.save(fileName)
     } catch (error) {
       console.error('PDF Export Error:', error)
       alert('Failed to export PDF. Please try again.')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
+  const handleExportDOCX = async () => {
+    if (!analysisResult) return
+    setIsExporting(true)
+    try {
+      await exportAnalysisReportToDocx(analysisResult, jobTitle || 'Job Analysis', company || '')
+    } catch (error) {
+      console.error('DOCX Export Error:', error)
+      alert('Failed to export DOCX. Please try again.')
+    } finally {
+      setIsExporting(false)
     }
   }
 
   // Expose handler to parent
   useImperativeHandle(ref, () => ({
-    handleExportReport
+    handleExportReport,
+    handleExportDOCX
   }))
 
   const handleOptimizeResume = async () => {
-    if (!jobTitle.trim()) {
-      setError('Job title is missing. Please run a new analysis with job details first.')
+    if (!analysisResult) {
+      setError('Please run an analysis first before optimizing.')
       return
     }
 
-    if (!jobDescription.trim()) {
-      setError('Job description is missing. Please run a new analysis with job details first.')
-      return
-    }
+    // Show the modal instead of window.confirm
+    setShowOptimizeModal(true)
+  }
 
+  // Actual optimization logic (called when modal confirms)
+  const executeOptimization = async () => {
+    setShowOptimizeModal(false)
     setOptimizing(true)
     setError(null)
 
     try {
-      const response = await fetch('/api/resume/analyze', {
+      // Use AI-powered optimization endpoint
+      const response = await fetch('/api/resume/optimize-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           resumeId,
-          jobTitle: jobTitle.trim(),
-          jobCompany: company.trim() || null,
-          jobText: jobDescription.trim(),
+          jobTitle: jobTitle.trim() || null,
+          jobDescription: jobDescription.trim() || null,
           industry: industry || null,
-          createTailoredVersion: true, // Create optimized version
+          missingKeywords: analysisResult?.missing_keywords || [],
         }),
       })
 
@@ -490,34 +488,99 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
         } catch (jsonError) {
           console.error('Failed to parse error response:', jsonError)
         }
-        console.error('Optimization API error:', errorMessage)
         setError(errorMessage)
         return
       }
 
       const data = await response.json()
-      console.log('Optimization response:', data)
+      console.log('AI Optimization response:', data)
 
       if (data.success) {
         const result = data.data
 
-        // If a new tailored resume was created, redirect to it
-        if (result.newResumeId) {
-          router.push(`/dashboard/resume/${result.newResumeId}`)
+        if (result.optimized && result.optimizedContent) {
+          // Update the resume context with optimized content
+          setResumeData(result.optimizedContent)
+
+          // Show toast notification
+          toast.success('✅ Resume optimized! Click "View Updated Resume" to see changes.', 8000)
+
+          // Set success state for banner
+          setOptimizationComplete(true)
+          setOptimizationMessage(result.message || 'Resume optimized successfully!')
+
+          // Scroll to top to show the notification
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+          }
         } else {
-          setError('Optimization completed but no new resume was created.')
+          toast.info('Resume is already well-optimized!', 5000)
+          setOptimizationComplete(true)
+          setOptimizationMessage(result.message || 'Resume is already well-optimized!')
+
+          // Scroll to top to show the notification
+          if (containerRef.current) {
+            containerRef.current.scrollTo({ top: 0, behavior: 'smooth' })
+          }
         }
       } else {
-        const errorMsg = data.error || 'Optimization failed. Please try again.'
-        console.error('Optimization failed:', errorMsg)
-        setError(errorMsg)
+        toast.error(data.error || 'Optimization failed. Please try again.')
+        setError(data.error || 'Optimization failed. Please try again.')
       }
     } catch (err: any) {
       console.error('Optimization error:', err)
-      const errorMessage = err.message || 'An unexpected error occurred during optimization.'
-      setError(errorMessage)
+      setError(err.message || 'An unexpected error occurred during optimization.')
     } finally {
       setOptimizing(false)
+    }
+  }
+
+  // Handle applying a bullet improvement to the resume
+  const handleApplyBulletImprovement = (improvement: { before: string; after: string; reason: string }) => {
+    if (!resumeData.experience || resumeData.experience.length === 0) {
+      setError('No experience section found in resume.')
+      return
+    }
+
+    // Normalize text for comparison (remove quotes, extra spaces, etc.)
+    const normalizeText = (text: string) => text.replace(/[""]/g, '"').replace(/\s+/g, ' ').trim().toLowerCase()
+    const normalizedBefore = normalizeText(improvement.before)
+
+    // Search through all experience entries and their bullets
+    let found = false
+    const updatedExperience = resumeData.experience.map(exp => {
+      if (found) return exp // Already found and replaced
+
+      const updatedBullets = exp.bullets.map(bullet => {
+        if (found) return bullet
+
+        // Extract plain text from RichText
+        const bulletText = jsonToPlainText(bullet)
+        const normalizedBullet = normalizeText(bulletText)
+
+        // Check if this bullet matches the "before" text (partial match)
+        if (normalizedBullet.includes(normalizedBefore) || normalizedBefore.includes(normalizedBullet)) {
+          found = true
+          // Replace with the improved version
+          return plainTextToJSON(improvement.after)
+        }
+
+        return bullet
+      })
+
+      return { ...exp, bullets: updatedBullets }
+    })
+
+    if (found) {
+      // Update the resume data
+      setResumeData({
+        ...resumeData,
+        experience: updatedExperience
+      })
+      // Show success (could use a toast notification in the future)
+      console.log('Successfully applied improvement to resume!')
+    } else {
+      setError(`Could not find matching bullet in resume. The bullet may have already been changed.`)
     }
   }
 
@@ -539,17 +602,16 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
 
   if (analysisResult) {
     return (
-      <div className="flex flex-col h-full overflow-y-auto p-8">
+      <div ref={containerRef} className="flex flex-col h-full overflow-y-auto p-8">
         <div className="flex items-center justify-between mb-6 gap-4">
           <h2 className="text-2xl font-bold text-white">Analysis Results</h2>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleExportReport}
-              className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-white/20 rounded-lg transition-all text-sm font-medium"
-            >
-              <Download className="w-4 h-4" />
-              Export Report
-            </button>
+            <ExportDropdown
+              onExportPDF={handleExportReport}
+              onExportDOCX={handleExportDOCX}
+              isExporting={isExporting}
+              label="Export Report"
+            />
             <button
               onClick={() => {
                 setAnalysisResult(null)
@@ -565,6 +627,46 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
           </div>
         </div>
 
+        {/* Optimization Success Banner */}
+        {optimizationComplete && (
+          <div className="mb-6 p-4 rounded-2xl bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-full bg-green-500/20">
+                  <Check className="w-5 h-5 text-green-400" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-green-400">Optimization Complete!</h3>
+                  <p className="text-sm text-white/70">{optimizationMessage}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    // Switch to builder view to see the updated resume
+                    if (onSwitchToBuilder) {
+                      onSwitchToBuilder()
+                      // Scroll to top after a brief delay to let the view switch
+                      setTimeout(() => {
+                        window.scrollTo({ top: 0, behavior: 'smooth' })
+                      }, 100)
+                    }
+                  }}
+                  className="px-4 py-2 bg-green-500 hover:bg-green-400 text-white font-medium rounded-xl transition-colors flex items-center gap-2"
+                >
+                  <FileText className="w-4 h-4" />
+                  View Updated Resume
+                </button>
+                <button
+                  onClick={() => setOptimizationComplete(false)}
+                  className="text-sm text-white/50 hover:text-white/80 transition-colors"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         {error && (
           <div className="mb-4 flex items-center gap-2 text-red-400 bg-red-500/10 p-4 rounded-xl border border-red-500/20">
             <AlertCircle className="w-5 h-5" />
@@ -574,9 +676,24 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
 
         <AnalysisDashboard
           data={analysisResult}
-          onFixIssue={() => {}}
-          onOptimizeResume={jobTitle && jobDescription ? handleOptimizeResume : undefined}
+          onFixIssue={() => { }}
+          onOptimizeResume={handleOptimizeResume}
           isOptimizing={optimizing}
+          jobTitle={jobTitle}
+          company={company}
+          resumeText={resumeRawText || currentResumeText}
+          industry={industry || 'technology'}
+          onApplyBulletImprovement={handleApplyBulletImprovement}
+        />
+
+        {/* Modal must be rendered in THIS return block to work */}
+        <OptimizeConfirmModal
+          isOpen={showOptimizeModal}
+          onClose={() => setShowOptimizeModal(false)}
+          onConfirm={executeOptimization}
+          bulletImprovementsCount={analysisResult?.bullet_improvements?.length || 0}
+          missingKeywordsCount={analysisResult?.missing_keywords?.length || 0}
+          isLoading={optimizing}
         />
       </div>
     )
@@ -595,175 +712,184 @@ export const JobAnalysisView = forwardRef<JobAnalysisViewRef, JobAnalysisViewPro
 
         {/* Input Area */}
         <div className="flex flex-col gap-4 sm:gap-6">
-        {/* Job Title & Company Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-          {/* Job Title */}
-          <div>
-            <label className="block text-sm font-medium text-white/80 mb-2">
-              Job Title <span className="text-red-400">*</span>
-            </label>
-            <input
-              type="text"
-              value={jobTitle}
-              onChange={(e) => setJobTitle(e.target.value)}
-              placeholder="e.g., Senior Software Engineer"
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            />
+          {/* Job Title & Company Row */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {/* Job Title */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Job Title <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+                placeholder="e.g., Senior Software Engineer"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
+
+            {/* Company Name */}
+            <div>
+              <label className="block text-sm font-medium text-white/80 mb-2">
+                Company <span className="text-white/40 text-xs">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                placeholder="e.g., Google"
+                className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+              />
+            </div>
           </div>
 
-          {/* Company Name */}
+          {/* Industry Selector */}
           <div>
             <label className="block text-sm font-medium text-white/80 mb-2">
-              Company <span className="text-white/40 text-xs">(Optional)</span>
+              Target Industry <span className="text-white/40 text-xs">(Optional - for ATS keyword optimization)</span>
             </label>
-            <input
-              type="text"
-              value={company}
-              onChange={(e) => setCompany(e.target.value)}
-              placeholder="e.g., Google"
-              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-            />
+            <select
+              value={industry}
+              onChange={(e) => setIndustry(e.target.value)}
+              className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' opacity='0.5' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 1rem center',
+              }}
+            >
+              <option value="" className="bg-gray-900">Select an industry...</option>
+              {availableIndustries.map((ind) => (
+                <option key={ind} value={ind} className="bg-gray-900">
+                  {ind.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-white/40 mt-1.5">
+              Selecting an industry enables keyword coverage analysis specific to your field
+            </p>
           </div>
-        </div>
 
-        {/* Industry Selector */}
-        <div>
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            Target Industry <span className="text-white/40 text-xs">(Optional - for ATS keyword optimization)</span>
-          </label>
-          <select
-            value={industry}
-            onChange={(e) => setIndustry(e.target.value)}
-            className="w-full bg-black/20 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all appearance-none cursor-pointer"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' opacity='0.5' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 1rem center',
+          {/* Job Description */}
+          <div className="flex flex-col">
+            <label className="block text-sm font-medium text-white/80 mb-2">
+              Job Description <span className="text-red-400">*</span>
+            </label>
+            <div className="glass-panel p-1 rounded-xl sm:rounded-2xl border border-white/10 relative group focus-within:border-purple-500/50 transition-colors h-[250px] sm:h-[300px] md:h-[350px]">
+              <textarea
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+                placeholder="Paste the full job description here..."
+                className="w-full h-full bg-transparent border-none resize-none p-4 sm:p-6 text-white placeholder-white/30 focus:outline-none focus:ring-0 text-sm sm:text-base leading-relaxed"
+              />
+              {jobDescription.length > 0 && (
+                <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 text-xs text-white/40">
+                  {jobDescription.length} characters
+                </div>
+              )}
+            </div>
+          </div>
+
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center gap-2 text-red-400 bg-red-500/10 p-4 rounded-xl border border-red-500/20"
+            >
+              <AlertCircle className="w-5 h-5" />
+              <span className="text-sm font-medium">{error}</span>
+            </motion.div>
+          )}
+
+          <motion.button
+            onClick={handleAnalyze}
+            disabled={analyzing || !jobTitle.trim() || !jobDescription.trim()}
+            animate={analyzing ? {
+              scale: [1, 1.02, 1],
+              boxShadow: [
+                '0 0 20px rgba(168, 85, 247, 0.4)',
+                '0 0 40px rgba(168, 85, 247, 0.6)',
+                '0 0 20px rgba(168, 85, 247, 0.4)',
+              ]
+            } : {}}
+            transition={{
+              duration: 2,
+              repeat: analyzing ? Infinity : 0,
+              ease: "easeInOut"
             }}
-          >
-            <option value="" className="bg-gray-900">Select an industry...</option>
-            {availableIndustries.map((ind) => (
-              <option key={ind} value={ind} className="bg-gray-900">
-                {ind.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-              </option>
-            ))}
-          </select>
-          <p className="text-xs text-white/40 mt-1.5">
-            Selecting an industry enables keyword coverage analysis specific to your field
-          </p>
-        </div>
-
-        {/* Job Description */}
-        <div className="flex flex-col">
-          <label className="block text-sm font-medium text-white/80 mb-2">
-            Job Description <span className="text-red-400">*</span>
-          </label>
-          <div className="glass-panel p-1 rounded-xl sm:rounded-2xl border border-white/10 relative group focus-within:border-purple-500/50 transition-colors h-[250px] sm:h-[300px] md:h-[350px]">
-            <textarea
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-              placeholder="Paste the full job description here..."
-              className="w-full h-full bg-transparent border-none resize-none p-4 sm:p-6 text-white placeholder-white/30 focus:outline-none focus:ring-0 text-sm sm:text-base leading-relaxed"
-            />
-            {jobDescription.length > 0 && (
-               <div className="absolute bottom-3 right-3 sm:bottom-4 sm:right-4 text-xs text-white/40">
-                 {jobDescription.length} characters
-               </div>
-            )}
-          </div>
-        </div>
-
-        {error && (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2 text-red-400 bg-red-500/10 p-4 rounded-xl border border-red-500/20"
-          >
-            <AlertCircle className="w-5 h-5" />
-            <span className="text-sm font-medium">{error}</span>
-          </motion.div>
-        )}
-
-        <motion.button
-          onClick={handleAnalyze}
-          disabled={analyzing || !jobTitle.trim() || !jobDescription.trim()}
-          animate={analyzing ? {
-            scale: [1, 1.02, 1],
-            boxShadow: [
-              '0 0 20px rgba(168, 85, 247, 0.4)',
-              '0 0 40px rgba(168, 85, 247, 0.6)',
-              '0 0 20px rgba(168, 85, 247, 0.4)',
-            ]
-          } : {}}
-          transition={{
-            duration: 2,
-            repeat: analyzing ? Infinity : 0,
-            ease: "easeInOut"
-          }}
-          className={`
+            className={`
             w-full py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg flex items-center justify-center gap-2 sm:gap-3 transition-all relative overflow-hidden
             ${analyzing
-              ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 text-white cursor-wait bg-[length:200%_100%] animate-gradient'
-              : !jobTitle.trim() || !jobDescription.trim()
-              ? 'bg-white/5 text-white/30 cursor-not-allowed'
-              : 'glow-button text-white hover:scale-[1.01] active:scale-[0.99]'}
+                ? 'bg-gradient-to-r from-purple-600 via-purple-500 to-purple-600 text-white cursor-wait bg-[length:200%_100%] animate-gradient'
+                : !jobTitle.trim() || !jobDescription.trim()
+                  ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                  : 'glow-button text-white hover:scale-[1.01] active:scale-[0.99]'}
           `}
-        >
-          {analyzing && (
-            <motion.div
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-              animate={{
-                x: ['-100%', '100%']
-              }}
-              transition={{
-                duration: 1.5,
-                repeat: Infinity,
-                ease: "linear"
-              }}
-            />
-          )}
-          {analyzing ? (
-            <>
-              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              <span className="relative z-10">Analyzing Resume</span>
-              <motion.span
-                className="relative z-10"
-                animate={{ opacity: [0, 1, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-              >
-                ...
-              </motion.span>
-            </>
-          ) : (
-            <>
-              Start Analysis
-              <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
-            </>
-          )}
-        </motion.button>
+          >
+            {analyzing && (
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                animate={{
+                  x: ['-100%', '100%']
+                }}
+                transition={{
+                  duration: 1.5,
+                  repeat: Infinity,
+                  ease: "linear"
+                }}
+              />
+            )}
+            {analyzing ? (
+              <>
+                <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
+                <span className="relative z-10">Analyzing Resume</span>
+                <motion.span
+                  className="relative z-10"
+                  animate={{ opacity: [0, 1, 0] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  ...
+                </motion.span>
+              </>
+            ) : (
+              <>
+                Start Analysis
+                <ArrowRight className="w-5 h-5 sm:w-6 sm:h-6" />
+              </>
+            )}
+          </motion.button>
 
-        {/* Info Footer */}
-        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 text-center text-white/40 text-xs sm:text-sm">
-          <div className="flex flex-col items-center gap-1 sm:gap-2">
-            <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><Target className="w-3 h-3 sm:w-4 sm:h-4" /></div>
-            <span className="leading-tight">ATS Keyword Match</span>
+          {/* Info Footer */}
+          <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 text-center text-white/40 text-xs sm:text-sm">
+            <div className="flex flex-col items-center gap-1 sm:gap-2">
+              <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><Target className="w-3 h-3 sm:w-4 sm:h-4" /></div>
+              <span className="leading-tight">ATS Keyword Match</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 sm:gap-2">
+              <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><FileText className="w-3 h-3 sm:w-4 sm:h-4" /></div>
+              <span className="leading-tight">Formatting Check</span>
+            </div>
+            <div className="flex flex-col items-center gap-1 sm:gap-2">
+              <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><Check className="w-3 h-3 sm:w-4 sm:h-4" /></div>
+              <span className="leading-tight">Tailoring Tips</span>
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-1 sm:gap-2">
-            <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><FileText className="w-3 h-3 sm:w-4 sm:h-4" /></div>
-            <span className="leading-tight">Formatting Check</span>
-          </div>
-          <div className="flex flex-col items-center gap-1 sm:gap-2">
-            <div className="p-1.5 sm:p-2 bg-white/5 rounded-full"><Check className="w-3 h-3 sm:w-4 sm:h-4" /></div>
-            <span className="leading-tight">Tailoring Tips</span>
-          </div>
-        </div>
         </div>
       </div>
 
-      <UpgradeModal 
-        isOpen={showUpgradeModal} 
+      <UpgradeModal
+        isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         featureName="AI Job Analysis"
+      />
+
+      <OptimizeConfirmModal
+        isOpen={showOptimizeModal}
+        onClose={() => setShowOptimizeModal(false)}
+        onConfirm={executeOptimization}
+        bulletImprovementsCount={analysisResult?.bullet_improvements?.length || 0}
+        missingKeywordsCount={analysisResult?.missing_keywords?.length || 0}
+        isLoading={optimizing}
       />
     </div>
   )

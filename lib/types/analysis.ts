@@ -95,4 +95,16 @@ export interface ResumeAnalysisResult {
   overall_summary: string
   strengths: string[]
   weaknesses: string[]
+
+  // NEW: JD Requirements Matching
+  jd_requirements?: JDRequirement[]
+}
+
+// JD Requirement matching for gap analysis
+export interface JDRequirement {
+  requirement: string           // The extracted requirement from JD
+  category: 'experience' | 'skill' | 'education' | 'certification' | 'other'
+  importance: 'required' | 'preferred' | 'nice-to-have'
+  status: 'matched' | 'partial' | 'missing'
+  evidence?: string             // Quote from resume that matches (if any)
 }

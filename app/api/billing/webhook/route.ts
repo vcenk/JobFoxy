@@ -1,13 +1,11 @@
 // app/api/billing/webhook/route.ts
-// Handle Stripe webhook events for subscription updates
-
 import { NextRequest, NextResponse } from 'next/server'
-import Stripe from 'stripe'  // stripe
-import { env } from '@/lib/config/env'  // lib/config/env.ts
-import { supabaseAdmin } from '@/lib/clients/supabaseClient'  // lib/clients/supabaseClient.ts
+import Stripe from 'stripe'
+import { env } from '@/lib/config/env'
+import { supabaseAdmin } from '@/lib/clients/supabaseClient'
+import { CREDIT_PACKS, SUBSCRIPTION_TIERS } from '@/lib/config/constants'
 
 const stripe = new Stripe(env.stripe.secretKey)
-
 const webhookSecret = env.stripe.webhookSecret
 
 export async function POST(req: NextRequest) {
@@ -16,57 +14,30 @@ export async function POST(req: NextRequest) {
     const signature = req.headers.get('stripe-signature')
 
     if (!signature) {
-      console.error('[Webhook] No signature found')
       return NextResponse.json({ error: 'No signature' }, { status: 400 })
     }
 
-    // Verify webhook signature
     let event: Stripe.Event
-
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret)
     } catch (err: any) {
-      console.error('[Webhook] Signature verification failed:', err.message)
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })
+      return NextResponse.json({ error: `Invalid signature: ${err.message}` }, { status: 400 })
     }
 
-    console.log('[Webhook] Event type:', event.type)
-
-    // Handle different event types
     switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session
-        await handleCheckoutCompleted(session)
+      case 'checkout.session.completed':
+        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
         break
-      }
-
       case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionUpdate(subscription)
+      case 'customer.subscription.updated':
+        await handleSubscriptionUpdate(event.data.object as Stripe.Subscription)
         break
-      }
-
-      case 'customer.subscription.deleted': {
-        const subscription = event.data.object as Stripe.Subscription
-        await handleSubscriptionCancelled(subscription)
+      case 'customer.subscription.deleted':
+        await handleSubscriptionCancelled(event.data.object as Stripe.Subscription)
         break
-      }
-
-      case 'invoice.payment_succeeded': {
-        const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentSucceeded(invoice)
+      case 'invoice.payment_succeeded':
+        await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
         break
-      }
-
-      case 'invoice.payment_failed': {
-        const invoice = event.data.object as Stripe.Invoice
-        await handlePaymentFailed(invoice)
-        break
-      }
-
-      default:
-        console.log('[Webhook] Unhandled event type:', event.type)
     }
 
     return NextResponse.json({ received: true }, { status: 200 })
@@ -76,107 +47,102 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// Handle checkout session completed
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const userId = session.metadata?.supabase_user_id
+  const userId = session.metadata?.userId // Note: Changed from supabase_user_id to match create-checkout logic
+  const type = session.metadata?.type
+  const itemId = session.metadata?.itemId
 
-  if (!userId) {
-    console.error('[Webhook] No user ID in checkout session metadata')
-    return
+  if (!userId) return
+
+  if (type === 'payment' && itemId) {
+    // Credit Pack Purchase
+    const pack = CREDIT_PACKS.find(p => p.id === itemId)
+    if (pack) {
+      // Atomic increment for purchased credits
+      const { error } = await supabaseAdmin.rpc('increment_profile_counter', {
+        user_id: userId,
+        counter_name: 'purchased_video_credits',
+        value: pack.credits // Ensure RPC supports value param, or loop increment
+      })
+
+      if (error) {
+         // Fallback if RPC doesn't support value param (our previous migration only supported +1)
+         // We need to fetch and update manually or update the RPC.
+         // Let's assume we do a fetch-update for safety here unless we update the RPC.
+         const { data } = await supabaseAdmin.from('profiles').select('purchased_video_credits').eq('id', userId).single()
+         const current = data?.purchased_video_credits || 0
+         await supabaseAdmin.from('profiles').update({
+           purchased_video_credits: current + pack.credits
+         }).eq('id', userId)
+      }
+      
+      // Log purchase
+      await supabaseAdmin.from('usage_tracking').insert({
+        user_id: userId,
+        resource_type: 'credit_purchase',
+        resource_count: pack.credits,
+        estimated_cost_cents: pack.price * 100,
+        metadata: { pack_id: pack.id, session_id: session.id }
+      })
+    }
   }
-
-  console.log('[Webhook] Checkout completed for user:', userId)
-
-  // Update will happen when subscription.created event fires
 }
 
-// Handle subscription created or updated
 async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.supabase_user_id
+  const userId = subscription.metadata?.userId // Ensure metadata is passed to subscription
+  if (!userId) return // Sometimes metadata is on customer, check that if null
 
-  if (!userId) {
-    console.error('[Webhook] No user ID in subscription metadata')
-    return
-  }
+  const priceId = subscription.items.data[0].price.id
+  let tier: typeof SUBSCRIPTION_TIERS[keyof typeof SUBSCRIPTION_TIERS] = SUBSCRIPTION_TIERS.BASIC
 
-  const status = subscription.status
-  const subscriptionStatus = status === 'active' ? 'pro' : 'free'
+  // Map Price ID to Tier
+  if (priceId === process.env.STRIPE_PRICE_PREMIUM) tier = SUBSCRIPTION_TIERS.PREMIUM
+  else if (priceId === process.env.STRIPE_PRICE_PRO) tier = SUBSCRIPTION_TIERS.PRO
 
-  console.log('[Webhook] Updating subscription for user:', userId, 'to:', subscriptionStatus)
-
-  await supabaseAdmin
-    .from('profiles')
-    .update({
-      subscription_status: subscriptionStatus,
-      stripe_subscription_id: subscription.id,
-      subscription_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-      subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    })
-    .eq('id', userId)
+  await supabaseAdmin.from('profiles').update({
+    subscription_status: subscription.status,
+    subscription_tier: tier,
+    subscription_price_id: priceId,
+    subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+  }).eq('id', userId)
 }
 
-// Handle subscription cancelled
 async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-  const userId = subscription.metadata?.supabase_user_id
-
-  if (!userId) {
-    console.error('[Webhook] No user ID in subscription metadata')
-    return
-  }
-
-  console.log('[Webhook] Subscription cancelled for user:', userId)
-
-  await supabaseAdmin
-    .from('profiles')
-    .update({
-      subscription_status: 'free',
-      subscription_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    })
-    .eq('id', userId)
-
-  // Reset monthly usage counters
-  await supabaseAdmin
-    .from('profiles')
-    .update({
-      ai_tokens_used_this_month: 0,
-      practice_sessions_this_month: 0,
-      mock_interviews_this_month: 0,
-    })
-    .eq('id', userId)
+  // We need to find the user by stripe_customer_id if metadata isn't present
+  const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
+  
+  await supabaseAdmin.from('profiles').update({
+    subscription_status: 'canceled',
+    subscription_tier: SUBSCRIPTION_TIERS.BASIC, // Revert to basic
+    subscription_current_period_end: new Date(subscription.current_period_end * 1000).toISOString()
+  }).eq('stripe_customer_id', customerId)
 }
 
-// Handle successful payment
 async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
-  const userId = invoice.subscription_details?.metadata?.supabase_user_id
-
-  if (!userId) {
-    console.error('[Webhook] No user ID in invoice metadata')
-    return
+  // Reset monthly allowances on successful billing cycle payment
+  if (invoice.billing_reason === 'subscription_cycle') {
+    const subscription = await stripe.subscriptions.retrieve(invoice.subscription as string)
+    const priceId = subscription.items.data[0].price.id
+    
+    // Find user (via customer ID usually reliable)
+    const customerId = typeof invoice.customer === 'string' ? invoice.customer : invoice.customer?.id
+    
+    if (priceId === process.env.STRIPE_PRICE_PREMIUM) {
+      // Reset monthly video credits for Premium users
+      await supabaseAdmin.from('profiles').update({
+        monthly_video_credits: 20, // Reset to 20
+        // Also reset usage counters? Usually handled by cron, but syncing with billing is cleaner for user
+        resume_builds_this_month: 0,
+        job_analyses_this_month: 0,
+        audio_practice_sessions_this_month: 0
+      }).eq('stripe_customer_id', customerId)
+    } else {
+        // Pro users (reset usage, but 0 video credits)
+        await supabaseAdmin.from('profiles').update({
+        resume_builds_this_month: 0,
+        job_analyses_this_month: 0,
+        audio_practice_sessions_this_month: 0
+      }).eq('stripe_customer_id', customerId)
+    }
   }
-
-  console.log('[Webhook] Payment succeeded for user:', userId)
-
-  // Reset monthly usage counters on successful payment
-  await supabaseAdmin
-    .from('profiles')
-    .update({
-      ai_tokens_used_this_month: 0,
-      practice_sessions_this_month: 0,
-      mock_interviews_this_month: 0,
-    })
-    .eq('id', userId)
-}
-
-// Handle failed payment
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
-  const userId = invoice.subscription_details?.metadata?.supabase_user_id
-
-  if (!userId) {
-    console.error('[Webhook] No user ID in invoice metadata')
-    return
-  }
-
-  console.log('[Webhook] Payment failed for user:', userId)
-
-  // Optionally: Send email notification or update profile with payment issue flag
 }

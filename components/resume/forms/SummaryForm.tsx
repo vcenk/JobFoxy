@@ -38,9 +38,9 @@ export const SummaryForm = ({ triggerSave }: { triggerSave: (dataOverride?: any)
       })
 
       const data = await response.json()
-      if (data.success && data.rewritten) {
+      if (data.success && data.data?.rewritten) {
         // Convert AI response back to JSON
-        const newSummary = plainTextToJSON(data.rewritten)
+        const newSummary = plainTextToJSON(data.data.rewritten)
         const newContent = { ...resumeData, summary: newSummary }
         setResumeData(newContent) // Update local state for UI
         triggerSave(newContent)   // Save the new state directly

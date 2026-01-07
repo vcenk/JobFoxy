@@ -7,17 +7,20 @@ export interface BlogPost {
   author: string;
   publishedAt: string;
   content: string;
+  keywords: string[];
+  image?: string; // Optional for now, can use placeholders or specific images later
 }
 
 export const blogPosts: BlogPost[] = [
   {
     slug: 'perfect-star-answers-behavioral-questions',
-    tag: 'STAR',
+    tag: 'STAR Method',
     title: '10 Perfect STAR Answers for Common Behavioral Questions',
-    excerpt: 'Master the most frequently asked behavioral questions with proven STAR-structured responses.',
+    excerpt: 'Master the most frequently asked behavioral questions with proven STAR-structured responses. Learn how to structure your answers for maximum impact.',
     readTime: '8 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 25, 2025',
+    keywords: ['STAR method', 'behavioral interview questions', 'interview preparation', 'leadership examples', 'handling conflict', 'interview coaching'],
     content: `
 # 10 Perfect STAR Answers for Common Behavioral Questions
 
@@ -181,6 +184,7 @@ The best way to master STAR answers is through practice. Job Foxy AI provides re
     readTime: '6 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 22, 2025',
+    keywords: ['interview failure question', 'weakness question', 'growth mindset', 'resilience', 'interview tips', 'behavioral interview'],
     content: `
 # How to Talk About Failures Without Sounding Negative
 
@@ -354,12 +358,13 @@ The best failure stories feel natural and authentic—and that comes from practi
   },
   {
     slug: 'ai-mock-interviews-better-than-traditional-practice',
-    tag: 'Tech',
+    tag: 'Technology',
     title: 'Why AI Mock Interviews Are Better Than Traditional Practice',
     excerpt: 'Discover the science-backed benefits of AI-powered interview preparation and real-time feedback.',
     readTime: '7 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 18, 2025',
+    keywords: ['AI mock interview', 'interview practice', 'automated interview feedback', 'interview anxiety', 'deliberate practice', 'interview skills'],
     content: `
 # Why AI Mock Interviews Are Better Than Traditional Practice
 
@@ -573,6 +578,7 @@ Job Foxy AI combines the latest advances in natural language processing with pro
     readTime: '10 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 15, 2025',
+    keywords: ['ATS optimization', 'resume keywords', 'applicant tracking system', 'resume writing', 'job search strategy', 'resume tips 2025'],
     content: `
 # ATS Resume Optimization: Keywords That Actually Work
 
@@ -882,6 +888,7 @@ Job Foxy's Resume Analysis tool uses the same parsing technology as leading ATS 
     readTime: '5 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 10, 2025',
+    keywords: ['interview anxiety', 'overcoming nervousness', 'interview confidence', 'breathing techniques', 'interview preparation', 'performance anxiety'],
     content: `
 # Handling Interview Anxiety: 5 Techniques That Work
 
@@ -1106,12 +1113,13 @@ Job Foxy AI provides unlimited mock interview practice, so you can face the real
   },
   {
     slug: 'ultimate-guide-salary-negotiation',
-    tag: 'Career',
+    tag: 'Career Growth',
     title: 'The Ultimate Guide to Salary Negotiation',
     excerpt: 'How to confidently negotiate your worth and secure the compensation you deserve.',
     readTime: '12 min read',
     author: 'Job Foxy Team',
     publishedAt: 'November 5, 2025',
+    keywords: ['salary negotiation', 'negotiation tips', 'salary guide', 'job offer negotiation', 'career advice', 'pay raise'],
     content: `
 # The Ultimate Guide to Salary Negotiation
 

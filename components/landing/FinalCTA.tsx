@@ -22,8 +22,8 @@ interface FinalCTAProps {
 
 export function FinalCTA({
   headline = {
-    line1: 'Ready to land your',
-    line2: 'dream job?'
+    line1: 'Stop Guessing.',
+    line2: 'Get Hired.'
   },
   subheadline = 'Stop guessing what hiring managers want. Get instant feedback on your answers and walk into your next interview with confidence.',
   ctaText = 'Start Practicing Free',

@@ -16,14 +16,14 @@ export const pricingPlans = [
     period: 'forever',
     description: 'For solo use with light needs.',
     features: [
-      '3 resume analyses per month',
+      '3 resume gap analyses/mo',
       '5 STAR practice sessions',
-      'Basic voice interview (15 min/mo)',
+      'Basic AI Mock Interview (15 min)',
       'General question bank',
-      'Basic STAR feedback'
+      'Basic structure feedback'
     ],
-    cta: 'Try EchoMind Free',
-    ctaLink: '/register',
+    cta: 'Try Job Foxy Free',
+    ctaLink: '/auth/register',
     popular: false,
     highlighted: false,
   },
@@ -34,16 +34,15 @@ export const pricingPlans = [
     period: '/mo',
     description: 'For pro use with heavy needs.',
     features: [
-      'Unlimited resume analyses',
-      'Unlimited STAR practice',
-      'Unlimited voice interviews',
-      'AI-generated questions',
-      'Advanced coaching',
-      'Detailed analytics',
-      'Session recordings'
+      'Unlimited resume gap analyses',
+      'Unlimited Smart JD Breakdowns',
+      'Unlimited AI Mock Interviews',
+      'Actionable Insights & Scoring',
+      'Session recordings & history',
+      'Advanced feedback (Tone/Pacing)'
     ],
     cta: 'Get Started',
-    ctaLink: '/register?plan=pro',
+    ctaLink: '/auth/register?plan=pro',
     popular: true,
     highlighted: true,
   },

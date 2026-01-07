@@ -3,12 +3,12 @@ import Stripe from 'stripe'
 import { env } from '../config/env'
 
 export const stripe = new Stripe(env.stripe.secretKey, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2023-10-16',
   typescript: true,
 })
 
 /**
- * Create a checkout session for subscription
+ * Create a checkout session for subscription or one-time payment
  */
 export async function createCheckoutSession({
   customerId,
@@ -16,23 +16,29 @@ export async function createCheckoutSession({
   successUrl,
   cancelUrl,
   metadata,
+  mode = 'subscription',
 }: {
   customerId: string
   priceId: string
   successUrl: string
   cancelUrl: string
   metadata?: Record<string, string>
+  mode?: 'subscription' | 'payment'
 }) {
-  return stripe.checkout.sessions.create({
-    mode: 'subscription',
+  const sessionConfig: Stripe.Checkout.SessionCreateParams = {
+    mode,
     customer: customerId,
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    subscription_data: {
-      metadata,
-    },
-  })
+    metadata,
+  }
+
+  if (mode === 'subscription') {
+    sessionConfig.subscription_data = { metadata }
+  }
+
+  return stripe.checkout.sessions.create(sessionConfig)
 }
 
 /**

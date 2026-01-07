@@ -12,7 +12,8 @@ import {
   Pricing,
   Blog,
   FinalCTA,
-  Footer
+  Footer,
+  BrandSignature
 } from '@/components/landing'  // components/landing/index.ts
 
 export default function LandingPage() {
@@ -50,6 +51,9 @@ export default function LandingPage() {
 
       {/* Footer */}
       <Footer />
+
+      {/* Brand Signature */}
+      <BrandSignature />
     </div>
   )
 }

@@ -135,3 +135,75 @@ Return the improved defense in the same JSON format.
     return null
   }
 }
+
+/**
+ * Extract potential gaps and weaknesses by comparing Resume and Job Description
+ */
+export async function extractGaps({
+  resumeText,
+  jobDescription,
+}: {
+  resumeText: string
+  jobDescription: string
+}): Promise<Array<{
+  type: 'missing_skill' | 'short_tenure' | 'employment_gap' | 'experience_mismatch' | 'other'
+  description: string
+  severity: 'high' | 'medium' | 'low'
+  context: string
+}> | null> {
+  const system = `
+You are a ruthless technical recruiter analyzing a candidate for a specific job.
+Identify specific gaps, weaknesses, or red flags that would make you hesitate to hire this person.
+Focus on:
+1. Missing hard skills required by the job.
+2. Experience gaps or short tenures.
+3. Mismatched seniority or domain experience.
+Return strict JSON only.
+`.trim()
+
+  const user = `
+Analyze this Resume against the Job Description.
+List 3-5 specific gaps/weaknesses.
+
+RESUME:
+"""
+${resumeText.slice(0, 3000)}
+"""
+
+JOB DESCRIPTION:
+"""
+${jobDescription.slice(0, 3000)}
+"""
+
+Return JSON array:
+[
+  {
+    "type": "missing_skill" | "short_tenure" | "employment_gap" | "experience_mismatch" | "other",
+    "description": "Concise description of the gap (e.g. 'Lacks required Python experience')",
+    "severity": "high" | "medium" | "low",
+    "context": "Why this is a problem based on the JD"
+  }
+]
+`.trim()
+
+  try {
+    const result = await callLLMJSON<Array<{
+      type: 'missing_skill' | 'short_tenure' | 'employment_gap' | 'experience_mismatch' | 'other'
+      description: string
+      severity: 'high' | 'medium' | 'low'
+      context: string
+    }>>({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.3,
+      maxTokens: 1000,
+    })
+
+    return result
+  } catch (error) {
+    console.error('[Gap Extraction Error]:', error)
+    return null
+  }
+}

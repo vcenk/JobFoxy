@@ -41,7 +41,7 @@ export function Benefits() {
             {/* Headlines Group */}
             <motion.div variants={fadeInUp}>
               <div className="text-xs font-bold text-[#8a6c58] tracking-widest uppercase mb-4">
-                Why EchoMind?
+                Why Job Foxy?
               </div>
 
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1a1615] mb-6 tracking-tight leading-[1.1]">

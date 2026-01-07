@@ -186,3 +186,77 @@ Return JSON with one story per category:
     return null
   }
 }
+
+/**
+ * Predict interview questions based on Resume and Job Description
+ */
+export async function predictInterviewQuestions({
+  resumeText,
+  jobDescription,
+}: {
+  resumeText: string
+  jobDescription: string
+}): Promise<Array<{
+  question: string
+  type: 'behavioral' | 'situational' | 'technical_soft'
+  difficulty: 'easy' | 'medium' | 'hard'
+  reasoning: string
+  suggested_focus: string
+}> | null> {
+  const system = `
+You are an expert hiring manager preparing for an interview.
+Generate 3-5 high-value interview questions tailored to the candidate and the role.
+Focus on:
+1. Validating key strengths mentioned in the resume.
+2. Probing areas where the candidate might be weak relative to the JD.
+3. Assessing cultural fit and soft skills relevant to the role.
+Return strict JSON only.
+`.trim()
+
+  const user = `
+Generate interview questions.
+
+RESUME:
+"""
+${resumeText.slice(0, 3000)}
+"""
+
+JOB DESCRIPTION:
+"""
+${jobDescription.slice(0, 3000)}
+"""
+
+Return JSON array:
+[
+  {
+    "question": "The actual question text...",
+    "type": "behavioral" | "situational" | "technical_soft",
+    "difficulty": "easy" | "medium" | "hard",
+    "reasoning": "Why ask this? (e.g. 'Checks leadership experience mentioned in JD')",
+    "suggested_focus": "What the candidate should highlight in their answer (e.g. 'Focus on conflict resolution')"
+  }
+]
+`.trim()
+
+  try {
+    const result = await callLLMJSON<Array<{
+      question: string
+      type: 'behavioral' | 'situational' | 'technical_soft'
+      difficulty: 'easy' | 'medium' | 'hard'
+      reasoning: string
+      suggested_focus: string
+    }>>({
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.5,
+      maxTokens: 1500,
+    })
+
+    return result
+  } catch (error) {
+    console.error('[Question Prediction Error]:', error)
+    return null
+  }
+}

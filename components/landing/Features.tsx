@@ -1,277 +1,303 @@
 'use client'
 
-import { motion } from 'framer-motion'
-import { Mic, ArrowRight, CheckCircle2, TrendingUp, Sparkles } from 'lucide-react'
-import { fadeInUp, staggerContainer } from './animations'
+import React, { useRef, useState, useEffect } from 'react'
+import { motion, useMotionValue, animate } from 'framer-motion'
+import { FileText, Search, Mic, Zap, BarChart3, ArrowRight, BrainCircuit, Sparkles, AlertCircle, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react'
+
+// --- MAIN DATA ---
+
+const FEATURES = [
+  {
+    id: 0,
+    title: "Gap Analysis",
+    subtitle: "Resume Intelligence",
+    description: "Don't guess. See exactly what's missing in your resume vs the job description.",
+    details: [
+      { label: "Missing Skills", value: "React, AWS" },
+      { label: "Score Impact", value: "-15 pts" },
+      { label: "Fix Difficulty", value: "Easy" },
+    ],
+    themeColor: "text-blue-600",
+    bgColor: "bg-blue-50",
+    icon: Search,
+    image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=800" // Data analysis/charts
+  },
+  {
+    id: 1,
+    title: "ATS Match",
+    subtitle: "System Optimization",
+    description: "Pass the robot gatekeepers with optimized keywords and formatting.",
+    details: [
+      { label: "Parse Rate", value: "98%" },
+      { label: "Keyword Match", value: "High" },
+      { label: "Formatting", value: "Clean" },
+    ],
+    themeColor: "text-emerald-600",
+    bgColor: "bg-emerald-50",
+    icon: CheckCircle2,
+    image: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&q=80&w=800" // Typing/Checklist
+  },
+  {
+    id: 4,
+    title: "Resume Builder",
+    subtitle: "ATS Friendly",
+    description: "Build professional, parsable resumes in minutes with proven templates.",
+    details: [
+      { label: "Templates", value: "Proven" },
+      { label: "Export", value: "PDF/DOCX" },
+      { label: "Layout", value: "Auto" },
+    ],
+    themeColor: "text-pink-600",
+    bgColor: "bg-pink-50",
+    icon: FileText,
+    image: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&q=80&w=800" // Documents/Writing
+  },
+  {
+    id: 7,
+    title: "Voice Coach",
+    subtitle: "Live Feedback",
+    description: "Perfect your delivery, tone, pacing, and confidence in real-time.",
+    details: [
+      { label: "Clarity", value: "95%" },
+      { label: "Pacing", value: "Good" },
+      { label: "Fillers", value: "Detected" },
+    ],
+    themeColor: "text-rose-600",
+    bgColor: "bg-rose-50",
+    icon: Mic,
+    image: "https://images.unsplash.com/photo-1590602847861-f357a9332bbc?auto=format&fit=crop&q=80&w=800" // Microphone
+  },
+  {
+    id: 3,
+    title: "STAR Practice",
+    subtitle: "Story Builder",
+    description: "Structure behavioral answers (Situation, Task, Action, Result) that sell.",
+    details: [
+      { label: "Situation", value: "Clear" },
+      { label: "Task/Action", value: "Strong" },
+      { label: "Result", value: "+20% ROI" },
+    ],
+    themeColor: "text-orange-600",
+    bgColor: "bg-orange-50",
+    icon: Zap,
+    image: "https://images.unsplash.com/photo-1573497019940-1c28c88b4f3e?auto=format&fit=crop&q=80&w=800" // Interview setting
+  },
+  {
+    id: 5,
+    title: "Job Description",
+    subtitle: "Smart Breakdown",
+    description: "Decode exactly what hiring managers are looking for in any job post.",
+    details: [
+      { label: "Core Focus", value: "Leadership" },
+      { label: "Hidden Reqs", value: "Agile" },
+      { label: "Culture Fit", value: "High" },
+    ],
+    themeColor: "text-cyan-600",
+    bgColor: "bg-cyan-50",
+    icon: BrainCircuit,
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800" // Tech/Connections
+  },
+  {
+    id: 6,
+    title: "Smart Insights",
+    subtitle: "Actionable Feedback",
+    description: "Specific advice on what to fix. No generic 'good job' scores.",
+    details: [
+      { label: "Action", value: "Identified" },
+      { label: "Result", value: "Metrics needed" },
+      { label: "Structure", value: "STAR" },
+    ],
+    themeColor: "text-violet-600",
+    bgColor: "bg-violet-50",
+    icon: Sparkles,
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=800" // Dashboard/Analytics
+  },
+  {
+    id: 2,
+    title: "SWOT Analysis",
+    subtitle: "Strategic Insight",
+    description: "Know your internal strengths and external threats before the interview.",
+    details: [
+      { label: "Strength", value: "Leadership" },
+      { label: "Weakness", value: "Tenure" },
+      { label: "Opportunity", value: "Remote" },
+    ],
+    themeColor: "text-indigo-600",
+    bgColor: "bg-indigo-50",
+    icon: BarChart3,
+    image: "https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&q=80&w=800" // Strategy/Chess
+  },
+]
 
 export function Features() {
+  const ref = useRef<HTMLDivElement>(null)
+  const x = useMotionValue(0)
+  const [sliderWidth, setSliderWidth] = useState(0)
+  const [trackWidth, setTrackWidth] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
+
+  // 1. Measure track width
+  useEffect(() => {
+    const updateWidths = () => {
+      if (ref.current) {
+        setSliderWidth(ref.current.offsetWidth)
+        setTrackWidth(ref.current.scrollWidth)
+      }
+    }
+    
+    updateWidths()
+    window.addEventListener('resize', updateWidths)
+    // Small delay to ensure images loaded/layout settled
+    setTimeout(updateWidths, 500) 
+    return () => window.removeEventListener('resize', updateWidths)
+  }, [])
+
+  // 2. Movement Logic
+  const CARD_WIDTH = 700 // Updated for more compact card width
+  
+  const slideLeft = () => {
+    const current = x.get()
+    const newX = Math.min(current + CARD_WIDTH, 0)
+    animate(x, newX, { type: "spring", stiffness: 300, damping: 30 })
+  }
+
+  const slideRight = () => {
+    const current = x.get()
+    // If we're at the end, loop back to start (optional) or just stop
+    // Let's loop back for continuous auto-play feel
+    const maxScroll = -(trackWidth - sliderWidth)
+    
+    if (current <= maxScroll + 10) { // Tolerance
+       animate(x, 0, { type: "spring", stiffness: 200, damping: 30 }) // Reset to start
+    } else {
+       const newX = Math.max(current - CARD_WIDTH, maxScroll)
+       animate(x, newX, { type: "spring", stiffness: 300, damping: 30 })
+    }
+  }
+
+  // 3. Auto-Play Interval
+  useEffect(() => {
+    if (isPaused || trackWidth === 0) return
+
+    const interval = setInterval(() => {
+      slideRight()
+    }, 4500)
+
+    return () => clearInterval(interval)
+  }, [isPaused, trackWidth, sliderWidth]) // Dependencies matter here
+
   return (
-    <section id="features" className="py-24 px-6 lg:px-8 bg-[#f4f7fa]">
-      <div className="max-w-7xl mx-auto">
+    <section id="features" className="py-20 bg-[#fafafa] overflow-hidden">
+      <div className="max-w-[1400px] mx-auto px-4 lg:px-8">
         
-        {/* --- MAIN TITLE SECTION START --- */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={staggerContainer}
-          className="text-center mb-16"
-        >
-          {/* Badge */}
-          <motion.div variants={fadeInUp} className="inline-block mb-4">
-            <span className="px-3 py-1 bg-[#dbeafe] text-[#1d4ed8] text-[10px] font-bold uppercase tracking-wider rounded-full border border-blue-100">
-              Powerful Features
-            </span>
-          </motion.div>
-
-          {/* Main Headline */}
-          <motion.h2
-            variants={fadeInUp}
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-[#1a1615] mb-6 tracking-tight leading-[1.1]"
-          >
-            Everything you need to <br/>
-            <span className="text-[#2563eb]">ace your interviews</span>
-          </motion.h2>
-
-          {/* Subtitle */}
-          <motion.p
-            variants={fadeInUp}
-            className="text-lg text-[#6b6b6b] max-w-2xl mx-auto"
-          >
-            Four powerful tools that transform how you prepare, practice, and perform.
-          </motion.p>
-        </motion.div>
-        {/* --- MAIN TITLE SECTION END --- */}
-
-
-        {/* 2×2 Grid of Feature Cards */}
-        <motion.div
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={staggerContainer}
-          className="grid md:grid-cols-2 gap-8"
-        >
-          {/* CARD 1 - Voice Mock Interviews */}
-          <motion.div
-            variants={fadeInUp}
-            className="group relative bg-white rounded-[40px] p-8 md:p-10 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-15px_rgba(37,99,235,0.1)] transition-all duration-500 overflow-hidden border border-transparent hover:border-blue-100"
-          >
-            <div className="mb-8 relative h-56 rounded-[24px] bg-[#eff6ff] overflow-hidden flex items-center justify-center">
-               <div className="absolute inset-0 opacity-50 bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:16px_16px]" />
-               
-               {/* Floating Player UI */}
-               <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="relative bg-white rounded-[24px] p-5 shadow-lg max-w-[280px] w-full border border-blue-50"
-               >
-                  <div className="flex items-center justify-between mb-4 border-b border-gray-100 pb-3">
-                     <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                        <span className="text-xs font-bold text-gray-800">Recording...</span>
-                     </div>
-                     <span className="text-xs font-mono text-gray-400">00:42</span>
-                  </div>
-                  
-                  {/* Rich Waveform */}
-                  <div className="flex items-center justify-center gap-1 h-10 mb-4 px-2">
-                    {[...Array(16)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        className="w-1.5 bg-blue-500 rounded-full"
-                        animate={{ height: [12, Math.random() * 32 + 8, 12] }}
-                        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.05 }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Transcript Bubble */}
-                  <div className="flex gap-3 items-start">
-                    <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                       <Mic className="w-3 h-3 text-blue-600" />
-                    </div>
-                    <div className="text-[11px] leading-snug text-gray-600 bg-gray-50 rounded-tr-xl rounded-br-xl rounded-bl-xl p-2.5 w-full">
-                       "I handled the conflict by scheduling a 1-on-1 meeting..."
-                    </div>
-                  </div>
-               </motion.div>
-            </div>
-
-            <h3 className="text-2xl font-bold text-[#1a1615] mb-3">Voice Mock Interviews</h3>
-            <p className="text-[#6b6b6b] mb-8 leading-relaxed">
-              Realistic, AI-led interviews where you answer aloud and get scored on delivery and confidence.
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-6 max-w-6xl mx-auto">
+          <div className="max-w-xl">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              className="inline-block mb-3"
+            >
+              <span className="px-3 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold uppercase tracking-wider rounded-full border border-blue-100">
+                Powerful Features
+              </span>
+            </motion.div>
+            <motion.h2 
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+              className="text-3xl md:text-4xl font-bold text-[#1a1615] tracking-tight mb-3"
+            >
+              Everything you need to succeed.
+            </motion.h2>
+            <p className="text-gray-500 text-base">
+              Swipe to explore the complete toolkit tailored for modern job seekers.
             </p>
+          </div>
 
-            <div className="flex items-center text-blue-600 font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer">
-              Start Speaking <ArrowRight className="w-4 h-4 ml-2" />
-            </div>
-          </motion.div>
+          {/* Controls */}
+          <div className="flex gap-2 hidden md:flex">
+             <button onClick={slideLeft} className="p-2.5 rounded-full border border-gray-200 hover:bg-white hover:shadow-md transition-all">
+                <ChevronLeft className="w-4 h-4 text-gray-600" />
+             </button>
+             <button onClick={slideRight} className="p-2.5 rounded-full border border-gray-200 hover:bg-white hover:shadow-md transition-all">
+                <ChevronRight className="w-4 h-4 text-gray-600" />
+             </button>
+          </div>
+        </div>
 
-
-          {/* CARD 2 - Resume Match */}
-          <motion.div
-            variants={fadeInUp}
-            className="group relative bg-white rounded-[40px] p-8 md:p-10 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-15px_rgba(16,185,129,0.1)] transition-all duration-500 overflow-hidden border border-transparent hover:border-emerald-100"
+        {/* --- SLIDING CARDS TRACK --- */}
+        <div 
+           ref={ref} 
+           className="cursor-grab active:cursor-grabbing overflow-hidden -mx-4 px-4 py-4"
+           onMouseEnter={() => setIsPaused(true)}
+           onMouseLeave={() => setIsPaused(false)}
+           onTouchStart={() => setIsPaused(true)}
+        >
+          <motion.div 
+            drag="x"
+            dragConstraints={{ right: 0, left: -(trackWidth - sliderWidth) }}
+            style={{ x }}
+            className="flex gap-6 w-max pl-4 md:pl-0"
           >
-            <div className="mb-8 relative h-56 rounded-[24px] bg-[#ecfdf5] overflow-hidden flex items-center justify-center">
-               <div className="absolute inset-0 opacity-50 bg-[radial-gradient(#10b981_1px,transparent_1px)] [background-size:16px_16px]" />
-
-               {/* Floating Analysis Card */}
-               <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="relative bg-white rounded-[24px] p-5 shadow-lg max-w-[280px] w-full border border-emerald-50"
-               >
-                  <div className="flex items-center justify-between mb-4">
-                     <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Product Manager</span>
-                        <span className="text-xs font-bold text-gray-900">Google</span>
-                     </div>
-                     <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded-lg border border-emerald-200">92% Match</span>
-                  </div>
-                  
-                  <div className="flex gap-4 mb-4">
-                     <div className="relative w-14 h-14 flex items-center justify-center flex-shrink-0">
-                        <svg className="w-full h-full -rotate-90">
-                           <circle cx="28" cy="28" r="24" stroke="#e5e7eb" strokeWidth="4" fill="none" />
-                           <circle cx="28" cy="28" r="24" stroke="#10b981" strokeWidth="4" fill="none" strokeDasharray="150" strokeDashoffset="12" />
-                        </svg>
-                        <span className="absolute text-sm font-bold text-[#1a1615]">High</span>
-                     </div>
-                     <div className="flex-1 space-y-2">
-                        <div className="flex justify-between items-center text-[10px]">
-                           <span className="text-gray-500">Hard Skills</span>
-                           <span className="font-bold text-gray-900">8/10</span>
+            {FEATURES.map((feature, idx) => (
+              <motion.div
+                key={feature.id}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                className="w-[85vw] md:w-[600px] lg:w-[700px] flex-shrink-0"
+              >
+                <div className="h-full bg-white rounded-[40px] border border-gray-100 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.08)] hover:shadow-2xl transition-all duration-300 relative overflow-hidden flex flex-col md:flex-row group">
+                   
+                   {/* LEFT: CONTENT (45%) */}
+                   <div className="p-7 md:p-8 flex flex-col justify-center w-full md:w-[45%] border-b md:border-b-0 md:border-r border-gray-50 bg-white z-10">
+                        <div className={`w-12 h-12 rounded-xl ${feature.bgColor} flex items-center justify-center mb-5`}>
+                            <feature.icon className={`w-6 h-6 ${feature.themeColor}`} />
                         </div>
-                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                           <div className="bg-emerald-500 h-full w-[80%] rounded-full" />
-                        </div>
-                        <div className="flex gap-1 flex-wrap mt-1">
-                           {['React', 'Strategy', 'Agile'].map(s => (
-                              <span key={s} className="text-[9px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded-md">{s}</span>
-                           ))}
-                        </div>
-                     </div>
-                  </div>
-               </motion.div>
-            </div>
 
-            <h3 className="text-2xl font-bold text-[#1a1615] mb-3">Resume & Job Match</h3>
-            <p className="text-[#6b6b6b] mb-8 leading-relaxed">
-              Upload your resume and job description to see match score, missing skills, and instant fixes.
-            </p>
-
-            <div className="flex items-center text-emerald-600 font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer">
-              Analyze Resume <ArrowRight className="w-4 h-4 ml-2" />
-            </div>
-          </motion.div>
-
-
-          {/* CARD 3 - STAR Coaching */}
-          <motion.div
-            variants={fadeInUp}
-            className="group relative bg-white rounded-[40px] p-8 md:p-10 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-15px_rgba(249,115,22,0.1)] transition-all duration-500 overflow-hidden border border-transparent hover:border-orange-100"
-          >
-            <div className="mb-8 relative h-56 rounded-[24px] bg-[#fff7ed] overflow-hidden flex items-center justify-center">
-               <div className="absolute inset-0 opacity-50 bg-[radial-gradient(#f97316_1px,transparent_1px)] [background-size:16px_16px]" />
-
-               {/* Chat/Feedback UI */}
-               <motion.div 
-                 whileHover={{ scale: 1.02 }}
-                 className="bg-white rounded-[24px] p-5 shadow-lg max-w-[280px] w-full border border-orange-50 flex flex-col gap-3"
-               >
-                  {/* User Message */}
-                  <div className="flex gap-2 justify-end">
-                     <div className="bg-orange-50 text-orange-900 text-[10px] p-2 rounded-2xl rounded-tr-sm max-w-[80%]">
-                        ...so I decided to organize a daily standup.
-                     </div>
-                     <div className="w-5 h-5 rounded-full bg-gray-200 flex-shrink-0" />
-                  </div>
-
-                  {/* AI Feedback */}
-                  <div className="flex gap-2">
-                     <div className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-3 h-3 text-orange-600" />
-                     </div>
-                     <div className="bg-gray-50 border border-orange-100 p-2.5 rounded-2xl rounded-tl-sm w-full">
-                        <div className="flex items-center gap-2 mb-1">
-                           <span className="text-[10px] font-bold text-orange-600">Action Identified</span>
-                           <CheckCircle2 className="w-3 h-3 text-orange-500" />
-                        </div>
-                        <p className="text-[10px] text-gray-500 leading-snug">
-                           Great specific action! Now, share the <span className="font-bold text-gray-700">Result</span>. What happened next?
+                        <h3 className="text-2xl font-bold text-[#1a1615] mb-1">{feature.title}</h3>
+                        <p className={`text-[10px] font-bold uppercase tracking-wider mb-3 ${feature.themeColor}`}>
+                            {feature.subtitle}
                         </p>
-                     </div>
-                  </div>
-               </motion.div>
-            </div>
+                        <p className="text-gray-500 text-sm leading-relaxed mb-6">
+                            {feature.description}
+                        </p>
 
-            <h3 className="text-2xl font-bold text-[#1a1615] mb-3">STAR Method Coach</h3>
-            <p className="text-[#6b6b6b] mb-8 leading-relaxed">
-              Guided practice that detects if your answer follows the STAR structure for maximum impact.
-            </p>
-
-            <div className="flex items-center text-orange-600 font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer">
-              Build Stories <ArrowRight className="w-4 h-4 ml-2" />
-            </div>
-          </motion.div>
-
-
-          {/* CARD 4 - Analytics */}
-          <motion.div
-            variants={fadeInUp}
-            className="group relative bg-white rounded-[40px] p-8 md:p-10 shadow-[0_20px_40px_-12px_rgba(0,0,0,0.05)] hover:shadow-[0_30px_60px_-15px_rgba(168,85,247,0.1)] transition-all duration-500 overflow-hidden border border-transparent hover:border-purple-100"
-          >
-            <div className="mb-8 relative h-56 rounded-[24px] bg-[#f3e8ff] overflow-hidden flex items-center justify-center">
-               <div className="absolute inset-0 opacity-50 bg-[radial-gradient(#a855f7_1px,transparent_1px)] [background-size:16px_16px]" />
-
-               {/* Graph UI */}
-               <motion.div 
-                 whileHover={{ y: -5 }}
-                 className="relative bg-white rounded-[24px] p-5 shadow-lg max-w-[280px] w-full border border-purple-50"
-               >
-                  <div className="flex items-center justify-between mb-4">
-                     <div>
-                        <div className="text-[10px] text-gray-500 uppercase font-bold tracking-wider">Confidence Score</div>
-                        <div className="text-2xl font-bold text-purple-600">8.5<span className="text-sm text-gray-400">/10</span></div>
-                     </div>
-                     <div className="flex items-center gap-1 text-[10px] font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                        <TrendingUp className="w-3 h-3" /> +15%
-                     </div>
-                  </div>
-                  
-                  {/* Bars */}
-                  <div className="flex items-end justify-between gap-2 h-16 border-b border-gray-100 pb-2 mb-2">
-                     {[40, 65, 45, 80, 55, 90, 75].map((h, i) => (
-                        <div key={i} className="w-full bg-purple-50 rounded-t-sm relative group-hover:bg-purple-100 transition-colors">
-                           <motion.div 
-                             initial={{ height: 0 }}
-                             whileInView={{ height: `${h}%` }}
-                             transition={{ duration: 1, delay: i * 0.1 }}
-                             className="absolute bottom-0 left-0 right-0 bg-purple-500 rounded-t-sm opacity-80"
-                           />
+                        <div className="space-y-2 mb-6">
+                            {feature.details.map((d, i) => (
+                                <div key={i} className="flex justify-between items-center text-[13px] border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                                    <span className="text-gray-400 font-medium">{d.label}</span>
+                                    <span className="text-gray-900 font-bold">{d.value}</span>
+                                </div>
+                            ))}
                         </div>
-                     ))}
-                  </div>
-                  <div className="flex justify-between text-[9px] font-bold text-gray-400 uppercase">
-                     <span>Mon</span>
-                     <span>Wed</span>
-                     <span>Fri</span>
-                     <span>Sun</span>
-                  </div>
-               </motion.div>
-            </div>
 
-            <h3 className="text-2xl font-bold text-[#1a1615] mb-3">Progress Analytics</h3>
-            <p className="text-[#6b6b6b] mb-8 leading-relaxed">
-              Track how your answers, clarity, and confidence scores improve over time with detailed charts.
-            </p>
+                        <button className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all hover:gap-3 ${feature.bgColor} ${feature.themeColor}`}>
+                            Explore <ArrowRight className="w-4 h-4" />
+                        </button>
+                   </div>
 
-            <div className="flex items-center text-purple-600 font-bold text-sm group-hover:translate-x-2 transition-transform cursor-pointer">
-              View Stats <ArrowRight className="w-4 h-4 ml-2" />
-            </div>
+
+                   {/* RIGHT: REAL IMAGE (55%) */}
+                   <div className="w-full md:w-[55%] relative overflow-hidden h-[240px] md:h-auto">
+                       {/* Overlay Gradient for Text readability if needed, or style */}
+                       <div className="absolute inset-0 bg-gradient-to-l from-transparent to-black/5 z-10" />
+                       
+                       <img 
+                          src={feature.image} 
+                          alt={feature.title}
+                          className="w-full h-full object-cover transform transition-transform duration-700 group-hover:scale-110"
+                          loading="lazy"
+                       />
+                   </div>
+
+                </div>
+              </motion.div>
+            ))}
           </motion.div>
+        </div>
 
-        </motion.div>
       </div>
     </section>
   )

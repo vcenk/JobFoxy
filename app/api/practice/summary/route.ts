@@ -78,9 +78,17 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate summary using AI engine
+    // Extract data from qaHistory for summary generation
+    const scores = qaHistory.map((qa: any) => qa.score || 0)
+    const questionCategories = qaHistory.map((qa: any) => qa.category || 'general')
+    const strengths = qaHistory.map((qa: any) => qa.strengths || [])
+    const improvements = qaHistory.map((qa: any) => qa.improvements || [])
+
     const summary = await generatePracticeSummary({
-      sessionType: session.session_type,
-      qaHistory,
+      scores,
+      questionCategories,
+      strengths,
+      improvements,
     })
 
     if (!summary) {
@@ -97,9 +105,9 @@ export async function POST(req: NextRequest) {
       .update({
         status: 'completed',
         overall_score: averageScore,
-        summary_strengths: summary.top_strengths,
-        summary_improvements: summary.areas_for_improvement,
-        summary_next_steps: summary.recommended_next_steps,
+        summary_strengths: summary.key_strengths,
+        summary_improvements: summary.key_weaknesses,
+        summary_next_steps: summary.next_steps,
         completed_at: new Date().toISOString(),
       })
       .eq('id', practiceSessionId)

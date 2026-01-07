@@ -29,6 +29,28 @@ export async function POST(req: NextRequest) {
 
     const { resumeId, jobDescriptionId, targetDuration, style } = body
 
+    // Check if pitch for this resume+job already exists
+    let existingQuery = supabaseAdmin
+      .from('intro_pitches')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (jobDescriptionId) {
+      existingQuery = existingQuery.eq('job_description_id', jobDescriptionId)
+    } else {
+      existingQuery = existingQuery.is('job_description_id', null)
+    }
+
+    const { data: existingPitch } = await existingQuery.single()
+
+    // If exists, return it instead of regenerating
+    if (existingPitch) {
+      return successResponse(existingPitch)
+    }
+
     // 1. Get Resume context
     const { data: resume } = await supabaseAdmin
       .from('resumes')
@@ -97,5 +119,42 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('[Intro Pitch API Critical Error]:', error)
     return serverErrorResponse((error as Error).message)
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return unauthorizedResponse()
+
+  const { searchParams } = new URL(req.url)
+  const resumeId = searchParams.get('resumeId')
+  const jobDescriptionId = searchParams.get('jobDescriptionId')
+
+  if (!resumeId) return badRequestResponse('resumeId is required')
+
+  try {
+    let query = supabaseAdmin
+      .from('intro_pitches')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (jobDescriptionId) {
+      query = query.eq('job_description_id', jobDescriptionId)
+    }
+
+    const { data, error } = await query.single()
+
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Intro Pitch Fetch Error]:', error)
+      return serverErrorResponse()
+    }
+
+    return successResponse(data)
+  } catch (error) {
+    console.error('[Intro Pitch GET Error]:', error)
+    return serverErrorResponse()
   }
 }

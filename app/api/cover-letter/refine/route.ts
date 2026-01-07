@@ -41,7 +41,9 @@ Guidelines:
 - Maintain the original structure and tone unless asked to change it
 - Keep the cover letter professional and concise
 - Preserve all factual information unless specifically asked to modify it
-- Return ONLY the refined cover letter text, no explanations or meta-commentary
+- Return ONLY the refined cover letter text without any quotes, markdown, or formatting
+- Do not wrap your response in quotes or code blocks
+- Output plain text only
 `.trim()
 
     const userPrompt = `
@@ -50,14 +52,12 @@ Please refine this cover letter according to the following instruction:
 INSTRUCTION: ${refinePrompt}
 
 CURRENT COVER LETTER:
-"""
 ${currentCoverLetter}
-"""
 
-Return the refined version of the cover letter.
+Return ONLY the refined cover letter as plain text. Do not include quotes, markdown formatting, or code blocks.
 `.trim()
 
-    const refinedCoverLetter = await callLLM({
+    let refinedCoverLetter = await callLLM({
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: userPrompt },
@@ -69,6 +69,18 @@ Return the refined version of the cover letter.
     if (!refinedCoverLetter || refinedCoverLetter.trim().length === 0) {
       return serverErrorResponse('Refinement returned empty results')
     }
+
+    // Clean up the response - remove any wrapping quotes or code blocks
+    refinedCoverLetter = refinedCoverLetter.trim()
+
+    // Remove triple quotes at start and end
+    refinedCoverLetter = refinedCoverLetter.replace(/^"""[\s\n]*/, '').replace(/[\s\n]*"""$/, '')
+
+    // Remove single/double quotes at start and end
+    refinedCoverLetter = refinedCoverLetter.replace(/^["'][\s\n]*/, '').replace(/[\s\n]*["']$/, '')
+
+    // Remove markdown code blocks
+    refinedCoverLetter = refinedCoverLetter.replace(/^```[\s\S]*?\n/, '').replace(/\n```$/, '')
 
     return successResponse({
       refinedCoverLetter: refinedCoverLetter.trim(),

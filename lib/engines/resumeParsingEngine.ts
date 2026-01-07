@@ -3,6 +3,7 @@
 
 import { callLLMJSON } from '../clients/openaiClient'  // lib/clients/openaiClient.ts
 import { ParsedResume } from '@/lib/types/resume'
+import { plainTextToJSON } from '@/lib/utils/richTextHelpers'
 
 /**
  * Parse resume text into structured JSON format
@@ -83,7 +84,7 @@ Only include fields that are present in the resume. Use null for missing data.
 `.trim()
 
   try {
-    const parsed = await callLLMJSON<ParsedResume>({
+    const parsed = await callLLMJSON<any>({
       model: 'gpt-4o-mini', // Use mini model - cheaper, faster, higher rate limits
       messages: [
         { role: 'system', content: system },
@@ -93,7 +94,25 @@ Only include fields that are present in the resume. Use null for missing data.
       maxTokens: 3000, // Increased for larger resumes
     })
 
-    return parsed
+    // Convert string fields to RichText (JSONContent) format
+    if (parsed) {
+      // Convert summary from string to JSONContent
+      if (parsed.summary && typeof parsed.summary === 'string') {
+        parsed.summary = plainTextToJSON(parsed.summary)
+      }
+
+      // Convert experience bullets from string[] to RichText[]
+      if (parsed.experience && Array.isArray(parsed.experience)) {
+        parsed.experience = parsed.experience.map((exp: any) => ({
+          ...exp,
+          bullets: exp.bullets?.map((bullet: string) =>
+            typeof bullet === 'string' ? plainTextToJSON(bullet) : bullet
+          ) || []
+        }))
+      }
+    }
+
+    return parsed as ParsedResume
   } catch (error) {
     console.error('[Resume Parsing Error]:', error)
     return null

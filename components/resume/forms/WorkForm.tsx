@@ -5,13 +5,14 @@ import { useState } from 'react'
 import { useResume } from '@/contexts/ResumeContext'
 import { GlassCard, GlassCardSection } from '@/components/ui/glass-card'
 import { RichTextEditor } from '@/components/ui/RichTextEditor'
-import { Plus, Trash2, Loader2, Sparkles } from 'lucide-react'
+import { Plus, Trash2, Loader2, Sparkles, Wand2 } from 'lucide-react'
 import { jsonToPlainText, plainTextToJSON, ensureJSONContent } from '@/lib/utils/richTextHelpers'
 import { JSONContent } from '@tiptap/core'
 
 export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) => void }) => {
   const { resumeData, setResumeData } = useResume()
   const [improvingBullet, setImprovingBullet] = useState<string | null>(null)
+  const [isBulkRewriting, setIsBulkRewriting] = useState(false)
 
   const addExperience = () => {
     setResumeData({
@@ -85,9 +86,9 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
       })
 
       const data = await response.json()
-      if (data.success && data.rewritten) {
+      if (data.success && data.data?.rewritten) {
         // Convert AI response back to JSON
-        const newBulletJSON = plainTextToJSON(data.rewritten)
+        const newBulletJSON = plainTextToJSON(data.data.rewritten)
 
         const updatedExperience = [...resumeData.experience]
         updatedExperience[expIndex].bullets[bulletIndex] = newBulletJSON
@@ -102,8 +103,108 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
     }
   }
 
+  const handleBulkRewrite = async () => {
+    if (isBulkRewriting || resumeData.experience.length === 0) return
+    setIsBulkRewriting(true)
+
+    try {
+      // 1. Prepare data: Convert all bullets to plain text for the AI
+      const simplifiedExperience = resumeData.experience.map(exp => ({
+        company: exp.company,
+        position: exp.position,
+        bullets: exp.bullets.map(b => jsonToPlainText(b))
+      }))
+
+      const response = await fetch('/api/resume/rewrite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          section: 'work_experience',
+          content: JSON.stringify(simplifiedExperience),
+        }),
+      })
+
+      const data = await response.json()
+      
+      if (data.success && data.data?.rewritten) {
+        let rewrittenExperience: any[] = []
+        
+        try {
+           const raw = data.data.rewritten
+           if (typeof raw === 'string') {
+             rewrittenExperience = JSON.parse(raw)
+           } else if (Array.isArray(raw)) {
+             rewrittenExperience = raw
+           } else {
+             console.error("Unexpected format for rewritten experience:", typeof raw)
+             return
+           }
+        } catch (e) {
+           console.error("Failed to parse rewritten experience JSON", e)
+           return 
+        }
+
+        if (!Array.isArray(rewrittenExperience)) {
+          console.error("Rewritten experience is not an array")
+          return
+        }
+
+        const newExperienceState = rewrittenExperience.map((rewrittenExp: any, index: number) => {
+             const originalExp = resumeData.experience[index] || {}
+             
+             return {
+                 ...originalExp, 
+                 // Allow AI to refine company/position if it wants, but prioritize original if missing
+                 company: rewrittenExp.company || originalExp.company,
+                 position: rewrittenExp.position || originalExp.position,
+                 // Map bullets back to Tiptap
+                 bullets: (rewrittenExp.bullets || []).map((b: string) => plainTextToJSON(b))
+             }
+        })
+        
+        const newContent = { ...resumeData, experience: newExperienceState }
+        setResumeData(newContent)
+        triggerSave(newContent)
+      }
+
+    } catch (error) {
+      console.error('Bulk rewrite failed:', error)
+    } finally {
+      setIsBulkRewriting(false)
+    }
+  }
+
   return (
     <GlassCard title="Work Experience">
+      
+      {/* BULK REWRITE BUTTON */}
+      {resumeData.experience.length > 0 && (
+        <div className="mb-6 flex justify-end">
+          <button
+            onClick={handleBulkRewrite}
+            disabled={isBulkRewriting}
+            className={`
+              flex items-center space-x-2 px-4 py-2 rounded-xl text-sm font-medium transition-all
+              ${isBulkRewriting 
+                ? 'bg-purple-500/20 text-purple-200 cursor-not-allowed' 
+                : 'bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:shadow-lg hover:shadow-purple-500/25 hover:scale-105'}
+            `}
+          >
+            {isBulkRewriting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Optimizing All...</span>
+              </>
+            ) : (
+              <>
+                <Wand2 className="w-4 h-4" />
+                <span>Optimize All with AI</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       <div className="space-y-6">
         {resumeData.experience.map((exp, expIndex) => (
           <div key={expIndex} className="p-4 bg-white/5 rounded-xl border border-white/10">
@@ -197,7 +298,7 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
                           <RichTextEditor
                             content={ensureJSONContent(bullet)}
                             onChange={(json) => updateBullet(expIndex, bulletIndex, json)}
-                            disabled={isImproving}
+                            disabled={isImproving || isBulkRewriting} // Disable during bulk rewrite too
                             placeholder="Led a team of 5 engineers to deliver..."
                             minHeight="60px"
                           />
@@ -213,7 +314,7 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
                           {/* UPDATED BULLET BUTTON */}
                           <button
                             onClick={() => handleImproveBullet(expIndex, bulletIndex)}
-                            disabled={isImproving}
+                            disabled={isImproving || isBulkRewriting}
                             title="Improve with AI"
                             className={`
                               p-2 rounded-lg transition-all
@@ -228,7 +329,7 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
                           {exp.bullets.length > 1 && (
                             <button
                               onClick={() => removeBullet(expIndex, bulletIndex)}
-                              disabled={isImproving}
+                              disabled={isImproving || isBulkRewriting}
                               className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -241,7 +342,8 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
                 </div>
                 <button
                   onClick={() => addBullet(expIndex)}
-                  className="mt-3 w-full py-2 bg-white/10 hover:bg-white/15 rounded-xl text-white text-sm font-medium transition-colors flex items-center justify-center space-x-2"
+                  disabled={isBulkRewriting}
+                  className="mt-3 w-full py-2 bg-white/10 hover:bg-white/15 rounded-xl text-white text-sm font-medium transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Add Bullet Point</span>
@@ -253,7 +355,8 @@ export const WorkForm = ({ triggerSave }: { triggerSave: (dataOverride?: any) =>
 
         <button
           onClick={addExperience}
-          className="w-full py-3 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-xl text-purple-200 font-semibold transition-colors flex items-center justify-center space-x-2"
+          disabled={isBulkRewriting}
+          className="w-full py-3 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 rounded-xl text-purple-200 font-semibold transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
         >
           <Plus className="w-5 h-5" />
           <span>Add Experience</span>

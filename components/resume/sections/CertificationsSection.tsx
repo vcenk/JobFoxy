@@ -15,9 +15,7 @@ export const CertificationsSection: React.FC<SectionComponentProps> = ({ isActiv
     onClick()
   }
 
-  const certs =
-    resumeData.certifications ||
-    (resumeData.skills.certifications?.map(c => ({ name: c })) || [])
+  const certs = resumeData.certifications || []
 
   if (certs.length === 0) return null
 

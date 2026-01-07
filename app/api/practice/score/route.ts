@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         has_action: score.star?.has_action,
         has_result: score.star?.has_result,
         strengths: score.strengths,
-        improvements: score.improvements,
+        improvements: score.areas_for_improvement,
       })
       .select()
       .single()

@@ -32,6 +32,22 @@ export async function POST(req: NextRequest) {
 
     const { question, resumeId, experienceSnippet, category } = body
 
+    // Check if story for this question already exists
+    const { data: existingStory } = await supabaseAdmin
+      .from('star_stories')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .eq('related_question', question)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single()
+
+    // If exists, return it instead of regenerating
+    if (existingStory) {
+      return successResponse(existingStory)
+    }
+
     // Get resume
     const { data: resume } = await supabaseAdmin
       .from('resumes')
@@ -89,6 +105,35 @@ export async function POST(req: NextRequest) {
     return successResponse(savedStory)
   } catch (error) {
     console.error('[STAR API Error]:', error)
+    return serverErrorResponse()
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return unauthorizedResponse()
+
+  const { searchParams } = new URL(req.url)
+  const resumeId = searchParams.get('resumeId')
+
+  if (!resumeId) return badRequestResponse('resumeId is required')
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('star_stories')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('[STAR Stories Fetch Error]:', error)
+      return serverErrorResponse()
+    }
+
+    return successResponse({ stories: data || [] })
+  } catch (error) {
+    console.error('[STAR GET Error]:', error)
     return serverErrorResponse()
   }
 }

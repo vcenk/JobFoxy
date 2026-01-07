@@ -39,8 +39,8 @@ export const SkillsSection: React.FC<SectionComponentProps> = ({ isActive, onCli
         {getTitle()}
       </h2>
       {(resumeData.skills.technical?.length ||
-        resumeData.skills.tools?.length ||
-        resumeData.skills.languages?.length) && (
+        resumeData.skills.soft?.length ||
+        resumeData.skills.other?.length) && (
         <div className={`${getLayoutContainerClass()} text-sm`}>
           {resumeData.skills.technical && resumeData.skills.technical.length > 0 && (
             <div>
@@ -48,20 +48,18 @@ export const SkillsSection: React.FC<SectionComponentProps> = ({ isActive, onCli
               <span className="text-gray-700">{resumeData.skills.technical.join(', ')}</span>
             </div>
           )}
-          {resumeData.skills.tools && resumeData.skills.tools.length > 0 && (
+          {resumeData.skills.soft && resumeData.skills.soft.length > 0 && (
             <div>
-              <span className="font-semibold text-gray-900">Tools: </span>
-              <span className="text-gray-700">{resumeData.skills.tools.join(', ')}</span>
+              <span className="font-semibold text-gray-900">Soft Skills: </span>
+              <span className="text-gray-700">{resumeData.skills.soft.join(', ')}</span>
             </div>
           )}
-          {!resumeData.languages &&
-            resumeData.skills.languages &&
-            resumeData.skills.languages.length > 0 && (
-              <div>
-                <span className="font-semibold text-gray-900">Languages: </span>
-                <span className="text-gray-700">{resumeData.skills.languages.join(', ')}</span>
-              </div>
-            )}
+          {resumeData.skills.other && resumeData.skills.other.length > 0 && (
+            <div>
+              <span className="font-semibold text-gray-900">Other: </span>
+              <span className="text-gray-700">{resumeData.skills.other.join(', ')}</span>
+            </div>
+          )}
         </div>
       )}
     </BaseSection>

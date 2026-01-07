@@ -14,8 +14,7 @@ export const LanguagesSection: React.FC<SectionComponentProps> = ({ isActive, on
     onClick()
   }
 
-  const languages =
-    resumeData.languages || (resumeData.skills.languages?.map(l => ({ language: l })) || [])
+  const languages = resumeData.languages || []
 
   if (languages.length === 0) return null
 

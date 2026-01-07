@@ -6,6 +6,8 @@
 import { motion } from 'framer-motion'
 import { Mic, Sparkles, Play } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
+import { UpgradeModal } from '@/components/ui/UpgradeModal'
 
 interface StartSessionHeroProps {
   canStartSession: boolean
@@ -24,6 +26,8 @@ export function StartSessionHero({
   sessionsLimit = 5,
   isPro = false,
 }: StartSessionHeroProps) {
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false)
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -87,17 +91,17 @@ export function StartSessionHero({
             ) : (
               <div className="space-y-3">
                 <button
-                  disabled
-                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white/10 text-white/50 text-lg font-semibold rounded-xl cursor-not-allowed"
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="inline-flex items-center justify-center gap-3 px-8 py-4 bg-white/10 hover:bg-white/20 text-white text-lg font-semibold rounded-xl transition-all border border-white/10"
                 >
                   <Sparkles className="w-6 h-6" />
                   Start New Session
                 </button>
                 <p className="text-sm text-red-400">
                   Monthly limit reached ({sessionsUsed}/{sessionsLimit}).{' '}
-                  <Link href="/dashboard/account?tab=billing" className="underline hover:text-red-300">
+                  <button onClick={() => setShowUpgradeModal(true)} className="underline hover:text-red-300">
                     Upgrade to Pro
-                  </Link>{' '}
+                  </button>{' '}
                   for unlimited sessions.
                 </p>
               </div>
@@ -139,6 +143,12 @@ export function StartSessionHero({
           )}
         </div>
       </div>
+
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        featureName="Audio Practice"
+      />
     </motion.div>
   )
 }

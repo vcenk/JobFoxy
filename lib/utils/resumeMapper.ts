@@ -87,17 +87,11 @@ function mapSkills(skills: ParsedResume['skills']): Skill[] {
   if (skills.technical && skills.technical.length > 0) {
     mappedSkills.push({ name: 'Technical Skills', level: '', keywords: skills.technical });
   }
-  if (skills.languages && skills.languages.length > 0) {
-    mappedSkills.push({ name: 'Languages', level: '', keywords: skills.languages });
+  if (skills.soft && skills.soft.length > 0) {
+    mappedSkills.push({ name: 'Soft Skills', level: '', keywords: skills.soft });
   }
-  if (skills.tools && skills.tools.length > 0) {
-    mappedSkills.push({ name: 'Tools', level: '', keywords: skills.tools });
-  }
-  if (skills.certifications && skills.certifications.length > 0) {
-    // Note: ParsedResume['certifications'] is an Array of Objects, not string[],
-    // so this needs careful mapping or removal if not directly comparable.
-    // For now, assuming skills.certifications stores names as strings.
-    mappedSkills.push({ name: 'Certifications', level: '', keywords: skills.certifications });
+  if (skills.other && skills.other.length > 0) {
+    mappedSkills.push({ name: 'Other Skills', level: '', keywords: skills.other });
   }
   return mappedSkills;
 }

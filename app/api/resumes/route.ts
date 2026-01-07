@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     // Fetch user's resumes
     const { data: resumes, error } = await supabaseAdmin
       .from('resumes')
-      .select('id, title, content, created_at, updated_at')
+      .select('id, title, content, job_description_id, created_at, updated_at')
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
 

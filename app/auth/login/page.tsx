@@ -101,7 +101,7 @@ export default function LoginPage() {
         
         {/* Logo */}
         <div className="relative z-10 flex items-center gap-2">
-           <div className="w-14 h-14 relative">
+           <div className="w-36 h-36 relative">
               <Image 
                 src={JobFoxyLogo} 
                 alt="Job Foxy" 
@@ -109,7 +109,6 @@ export default function LoginPage() {
                 className="object-contain"
               />
            </div>
-           <span className="font-bold text-xl tracking-tight">Job Foxy</span>
         </div>
 
         {/* Content */}

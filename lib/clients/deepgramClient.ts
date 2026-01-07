@@ -39,9 +39,11 @@ export async function textToSpeech({
 export async function speechToText({
   audioBuffer,
   model = env.deepgram.sttModel,
+  mimeType = 'audio/webm',
 }: {
   audioBuffer: Buffer
   model?: string
+  mimeType?: string
 }): Promise<{
   transcript: string
   confidence?: number
@@ -53,13 +55,15 @@ export async function speechToText({
       method: 'POST',
       headers: {
         Authorization: `Token ${env.deepgram.apiKey}`,
-        'Content-Type': 'audio/wav',
+        'Content-Type': mimeType,
       },
-      body: audioBuffer,
+      body: audioBuffer as any,
     }
   )
 
   if (!response.ok) {
+    const errorText = await response.text()
+    console.error('[Deepgram STT Error]:', response.status, errorText)
     throw new Error(`Deepgram STT error: ${response.statusText}`)
   }
 

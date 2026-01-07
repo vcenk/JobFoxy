@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Mic, MicOff, Phone, Video, MoreHorizontal, User } from 'lucide-react'
 import heroAvatar from '../assets/hero_avatar.png'
@@ -46,15 +48,15 @@ export function InteractiveAvatar() {
           
           {/* The Avatar Image */}
           <div className="relative z-10 w-40 h-40 sm:w-48 sm:h-48 rounded-full shadow-2xl p-1 bg-white">
-            <div className="w-full h-full rounded-full overflow-hidden relative bg-gray-200">
-               {/* REPLACE THE SRC BELOW WITH YOUR OWN IMAGE. 
-                  Unsplash placeholder used here. 
-               */}
-             <img 
-                    src={heroAvatar.src} 
-                    alt="AI Coach" 
-                    className="w-full h-full object-cover"
-                />
+             <div className="w-full h-full rounded-full overflow-hidden relative bg-gray-200">
+               <Image 
+                  src={heroAvatar} 
+                  alt="Sarah - AI Interview Coach" 
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 640px) 160px, 192px"
+               />
             </div>
 
             {/* Speaking Ripple Effect */}

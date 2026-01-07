@@ -2,9 +2,17 @@
 import OpenAI from 'openai'
 import { env } from '../config/env'
 
-const client = new OpenAI({
-  apiKey: env.openai.apiKey,
-})
+// Lazy initialization to ensure environment variables are loaded first
+let client: OpenAI | null = null
+
+function getClient(): OpenAI {
+  if (!client) {
+    client = new OpenAI({
+      apiKey: env.openai.apiKey,
+    })
+  }
+  return client
+}
 
 type Role = 'system' | 'user' | 'assistant'
 
@@ -33,7 +41,7 @@ export async function callLLM({
   }
 
   try {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: usedModel,
       messages,
       temperature,
@@ -124,8 +132,10 @@ export async function callLLMJSON<T = any>({
     } catch (parseError) {
       console.error('[JSON Parse Error]: Failed to parse JSON')
       console.error('[Parse error details]:', parseError)
-      console.error('[Cleaned content]:', cleanedContent.substring(0, 500))
-      console.error('[Raw content]:', content.substring(0, 500))
+      console.error('[Cleaned content]:', cleanedContent.substring(0, 1000))
+      console.error('[Raw content]:', content.substring(0, 1000))
+      console.error('[Content length]:', content.length, 'characters')
+      console.error('[Check if truncated]: Response may have been cut off due to token limit')
       return null
     }
   } catch (error: any) {
@@ -134,4 +144,4 @@ export async function callLLMJSON<T = any>({
   }
 }
 
-export { client as openaiClient }
+export { getClient as openaiClient }

@@ -199,9 +199,10 @@ export async function POST(req: NextRequest) {
 
     // If analyzing against a job description AND user wants a tailored version, create a new resume
     if (jobText && createTailoredVersion) {
+      // Use cleaner naming: just job title + company, not appended to base resume title
       const tailoredTitle = jobTitle
-        ? `${resume.title} - ${jobTitle}${jobCompany ? ` @ ${jobCompany}` : ''}`
-        : `${resume.title} - Tailored`
+        ? `${jobTitle}${jobCompany ? ` @ ${jobCompany}` : ''}`
+        : `Tailored Resume`
 
       console.log('[Creating Tailored Resume]:', {
         source_resume_id: resumeId,

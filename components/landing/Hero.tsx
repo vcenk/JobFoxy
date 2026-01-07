@@ -26,12 +26,12 @@ const defaultStats = [
 ]
 
 export function Hero({
-  badge = 'AI-Powered Interview Coaching',
+  badge = 'AI-Powered Interview Intelligence',
   headline = {
-    line1: 'Ace your next interview',
-    line2: 'with AI coaching'
+    line1: 'Stop Guessing.',
+    line2: 'Master Your Interview with Clarity.'
   },
-  subheadline = 'Master behavioral interviews with AI-powered voice coaching, STAR framework feedback, and role-specific practice.',
+  subheadline = 'Go beyond generic advice. Get specific resume gap analysis, smart job description breakdowns, and AI-led mock interviews with actionable feedback.',
   stats = defaultStats
 }: HeroProps) {
   return (
@@ -62,9 +62,8 @@ export function Hero({
             {/* Headline */}
             <motion.h1
               variants={fadeInUp}
-              className="text-4xl sm:text-5xl lg:text-[4rem] font-semibold mb-6 leading-[1.05]"
-
-              style={{ letterSpacing: '-0.04em' }}
+              className="text-4xl sm:text-5xl lg:text-[4rem] font-bold mb-6 leading-[1.1] text-gray-900"
+              style={{ letterSpacing: '-0.02em' }}
             >
               {headline.line1}
               <br />
@@ -76,8 +75,7 @@ export function Hero({
             {/* Subheadline */}
             <motion.p
               variants={fadeInUp}
-              className="text-[17px] text-[#606060] mb-8 max-w-md leading-[1.5]"
-
+              className="text-[18px] text-gray-600 mb-8 max-w-xl leading-relaxed mx-auto lg:mx-0"
             >
               {subheadline}
             </motion.p>
@@ -85,7 +83,7 @@ export function Hero({
             {/* Buttons */}
             <motion.div
               variants={fadeInUp}
-              className="flex flex-col sm:flex-row gap-5 justify-center lg:justify-start mb-12"
+              className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12"
             >
               <motion.div 
                 whileHover={{ scale: 1.03 }} 
@@ -95,20 +93,20 @@ export function Hero({
                 <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-blue-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
                 <Link
                   href="/auth/register"
-                  className="relative flex items-center justify-center gap-3 px-10 py-5 bg-[#0f0f0f] text-white rounded-xl font-bold text-lg overflow-hidden"
+                  className="relative flex items-center justify-center gap-2 px-8 py-4 bg-[#0f0f0f] text-white rounded-xl font-bold text-lg overflow-hidden w-full sm:w-auto"
                 >
                    <div className="absolute top-0 -inset-full h-full w-1/2 z-5 block transform -skew-x-12 bg-gradient-to-r from-transparent to-white opacity-20 group-hover:animate-shine" />
-                  <span>Try Job Foxy Free</span>
+                  <span>Start Improving Free</span>
                   <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
               </motion.div>
 
               <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
                 <a
-                  href="#features"
-                  className="flex items-center justify-center gap-3 px-10 py-5 bg-white text-[#0f0f0f] rounded-xl hover:bg-gray-50 transition-all font-semibold text-lg border-2 border-transparent hover:border-black/[0.05]"
+                  href="#how-it-works"
+                  className="flex items-center justify-center gap-3 px-8 py-4 bg-white text-[#0f0f0f] rounded-xl hover:bg-gray-50 transition-all font-semibold text-lg border border-gray-200 hover:border-gray-300 w-full sm:w-auto"
                 >
-                  View Features
+                  See How It Works
                 </a>
               </motion.div>
             </motion.div>

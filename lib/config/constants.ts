@@ -4,27 +4,60 @@ export const APP_NAME = 'Job Foxy'
 export const APP_DESCRIPTION = 'AI-Powered Interview Preparation Platform'
 
 // Subscription plans
-export const PLANS = {
-  FREE: 'free',
-  PRO: 'pro',
+export const SUBSCRIPTION_TIERS = {
+  BASIC: 'basic',  // Free
+  PRO: 'pro',      // $19/mo
+  PREMIUM: 'premium' // $49/mo
 } as const
 
-export const PLAN_LIMITS = {
-  free: {
-    resumeAnalyses: 3,
-    practiceSessionsPerMonth: 5,
-    mockInterviewsPerMonth: 1,
-    starStories: 10,
-    coverLetters: 2,
+export const TIER_LIMITS = {
+  [SUBSCRIPTION_TIERS.BASIC]: {
+    resumeBuilds: 1,
+    jobAnalyses: 3,
+    audioPractice: 1, // Trial session (e.g. 15 min)
+    videoMockInterviews: 0, // No direct access
+    monthlyVideoCredits: 0,
+    avatars: [], // None
+    analytics: 'basic',
+    languages: ['english'], // Basic voice only
+    voiceGenders: ['default'], // 1 default
+    voiceStyles: ['professional'], // 1 professional
   },
-  pro: {
-    resumeAnalyses: Infinity,
-    practiceSessionsPerMonth: Infinity,
-    mockInterviewsPerMonth: Infinity,
-    starStories: Infinity,
-    coverLetters: Infinity,
+  [SUBSCRIPTION_TIERS.PRO]: {
+    resumeBuilds: Infinity,
+    jobAnalyses: Infinity,
+    audioPractice: Infinity,
+    videoMockInterviews: 'pay-per-use', // Needs credits
+    monthlyVideoCredits: 0,
+    avatars: ['standard'], // Standard avatars
+    analytics: 'standard',
+    languages: ['all'], // All 35+
+    voiceGenders: ['all'], // All 3
+    voiceStyles: ['professional', 'conversational', 'calm'], // 3 styles
   },
+  [SUBSCRIPTION_TIERS.PREMIUM]: {
+    resumeBuilds: Infinity,
+    jobAnalyses: Infinity,
+    audioPractice: Infinity,
+    videoMockInterviews: Infinity, // Unlimited, or specific number of included sessions
+    monthlyVideoCredits: 20, // 4 sessions * 5 credits
+    avatars: ['standard', 'premium'], // All avatars
+    analytics: 'advanced',
+    languages: ['all'],
+    voiceGenders: ['all'],
+    voiceStyles: ['all'], // All 6 styles
+  }
 }
+
+export const CREDIT_COSTS = {
+  VIDEO_INTERVIEW_SESSION: 5, // 1 session = 5 credits
+}
+
+export const CREDIT_PACKS = [
+  { id: 'starter', name: 'Starter Pack', credits: 10, price: 12 },
+  { id: 'pro', name: 'Pro Pack', credits: 25, price: 25 },
+  { id: 'founders', name: 'Founders Pack', credits: 50, price: 45 },
+]
 
 // Interview personas
 export const INTERVIEW_PERSONAS = [

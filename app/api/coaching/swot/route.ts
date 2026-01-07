@@ -32,6 +32,28 @@ export async function POST(req: NextRequest) {
 
     const { resumeId, jobDescriptionId } = body
 
+    // Check if SWOT analysis for this resume+job already exists
+    let existingQuery = supabaseAdmin
+      .from('swot_analyses')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (jobDescriptionId) {
+      existingQuery = existingQuery.eq('job_description_id', jobDescriptionId)
+    } else {
+      existingQuery = existingQuery.is('job_description_id', null)
+    }
+
+    const { data: existingSwot } = await existingQuery.single()
+
+    // If exists, return it instead of regenerating
+    if (existingSwot) {
+      return successResponse(existingSwot)
+    }
+
     // Get resume
     const { data: resume } = await supabaseAdmin
       .from('resumes')
@@ -98,6 +120,45 @@ export async function POST(req: NextRequest) {
     return successResponse(savedSwot)
   } catch (error) {
     console.error('[SWOT API Error]:', error)
+    return serverErrorResponse()
+  }
+}
+
+export async function GET(req: NextRequest) {
+  const user = await getAuthUser(req)
+  if (!user) return unauthorizedResponse()
+
+  const { searchParams } = new URL(req.url)
+  const resumeId = searchParams.get('resumeId')
+  const jobDescriptionId = searchParams.get('jobDescriptionId')
+
+  if (!resumeId) return badRequestResponse('resumeId is required')
+
+  try {
+    let query = supabaseAdmin
+      .from('swot_analyses')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('resume_id', resumeId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+
+    if (jobDescriptionId) {
+      query = query.eq('job_description_id', jobDescriptionId)
+    } else {
+      query = query.is('job_description_id', null)
+    }
+
+    const { data, error } = await query.single()
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "No rows found"
+      console.error('[SWOT Fetch Error]:', error)
+      return serverErrorResponse()
+    }
+
+    return successResponse(data) // Returns null if not found (which is fine)
+  } catch (error) {
+    console.error('[SWOT GET Error]:', error)
     return serverErrorResponse()
   }
 }
