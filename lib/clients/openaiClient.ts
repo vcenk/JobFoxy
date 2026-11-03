@@ -21,6 +21,7 @@ interface CallLLMOptions {
   messages: { role: Role; content: string }[]
   temperature?: number
   maxTokens?: number
+  jsonMode?: boolean
 }
 
 /**
@@ -31,6 +32,7 @@ export async function callLLM({
   messages,
   temperature = 0.3,
   maxTokens = 1500,
+  jsonMode = false,
 }: CallLLMOptions): Promise<string> {
   const usedModel = model ?? env.openai.modelMain
 
@@ -46,7 +48,8 @@ export async function callLLM({
       messages,
       temperature,
       max_tokens: maxTokens,
-    })
+      ...(jsonMode ? { response_format: { type: 'json_object' as const } } : {}),
+    }, { timeout: 100_000, maxRetries: 2 })
 
     const content = response.choices[0]?.message?.content
     if (!content) {
@@ -109,9 +112,10 @@ export async function callLLMJSON<T = any>({
   messages,
   temperature = 0.3,
   maxTokens = 1500,
+  jsonMode = true,
 }: CallLLMOptions): Promise<T | null> {
   try {
-    const content = await callLLM({ model, messages, temperature, maxTokens })
+    const content = await callLLM({ model, messages, temperature, maxTokens, jsonMode })
 
     if (!content || content.trim().length === 0) {
       console.error('[JSON Parse Error]: Received empty content from LLM')

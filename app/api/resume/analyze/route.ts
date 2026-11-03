@@ -20,6 +20,11 @@ import {
   incrementUsage,
 } from '@/lib/utils/apiHelpers'  // lib/utils/apiHelpers.ts
 
+// Job analysis makes a large LLM call (up to ~6k tokens); the default serverless
+// timeout is too short and causes 504s for customers.
+export const runtime = 'nodejs'
+export const maxDuration = 120
+
 export async function POST(req: NextRequest) {
   // Authenticate user
   const user = await getAuthUser(req)

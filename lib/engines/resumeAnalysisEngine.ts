@@ -401,7 +401,7 @@ Return JSON in this exact structure:
         { role: 'user', content: user },
       ],
       temperature: 0.4,
-      maxTokens: 4000,
+      maxTokens: 6000,
     })
 
     if (!result) {
